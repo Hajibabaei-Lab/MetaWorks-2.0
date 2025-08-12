@@ -1,0 +1,41 @@
+# Snakefile
+configfile: "config/config_ESV.yaml"
+
+# --------------------------------------
+# modules for pseudogene filtering
+# --------------------------------------
+module orfs_hmm:
+    snakefile: "modules/orfs_hmm.smk"
+    config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
+
+module orfs_longest:
+    snakefile: "modules/orfs_longest.smk"
+    config: {"ORFFINDER":["ORFFINDER"],"dir": config["dir"]}
+
+# -------------------------------
+# Load external module rule files
+# -------------------------------
+include: "rules/utils.smk"
+include: "rules/preprocessing.smk"
+include: "rules/adapter_trimming.smk"
+include: "rules/denoising.smk"
+include: "rules/rdp_classifier.smk"
+include: "rules/pseudogene.smk"
+include: "rules/results.smk"
+include: "rules/stats.smk"
+
+# -------------------------------
+# Define workflow target
+# -------------------------------
+rule all:
+	input:
+		# Rule testing:
+		config["dir"] + "/stats/R1.stats",
+		config["dir"] + "/stats/R2.stats",
+		expand(config["dir"] + "/stats/{sample}.Pstats", sample=SAMPLES_UNIQUE),
+		config["dir"] + "/stats/paired.stats",
+		expand(config["dir"] + "/stats/{sample}.trimmedstats", sample=SAMPLES_UNIQUE),
+		config["dir"] + "/stats/trimmed.stats",
+		config["dir"] + "/results.csv",
+		config["dir"] + "/taxonomy.csv",
+		config["dir"] + "/ESV.table"

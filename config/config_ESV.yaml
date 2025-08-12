@@ -1,0 +1,210 @@
+# Configuration file for MetaWorks v2.0
+
+# Author: Teresita M. Porter / Alex Song
+# Date: September 19, 2023
+# Update: July 25, 2025
+
+############################################################################
+# Identify raw read files
+
+# This directory should contain the compressed paired-end Illumina reads, ex. *.fastq.gz
+sample_source: "folder"
+samples_csv: "samples.csv"
+fastq_dir: "/MetaWorks/testing/COI_data"
+
+############################################################################
+# Directory for the output
+
+# This directory will be created to contain pipeline results for a marker
+# ex. COI, ITS, SSU
+# keep the name short and simple with no spaces or weird punctuation, underscores are okay
+dir: "COI"
+
+############################################################################
+# Raw read pairing
+
+SEQPREP:
+# Phred score quality cutoff (default 13):
+    q: 13
+# Minimum overlap (bp) length between forward and reverse reads:
+    o: 25
+# Maximum fraction of mismatches allowed in overlap (default 0.02):
+    m: 0.02
+# Minimum fraction of matching overlap (default 0.90):
+    n: 0.90
+
+############################################################################
+# Primer trimming
+
+# Each marker should have a fasta file with linked adapters
+# A single primer pair is sufficient or multiple sets if used
+# ex. AmpliconName = COI_BE, COI_F230R, COI_mljg
+# >AmpliconName;
+# ^FwdPrimerSeq...ReverseComplementedRevPrimerSeq$
+CUTADAPT:
+# adapters.fasta file
+    fasta: "/MetaWorks/testing/adapters_anchored.fasta"
+# Minimum sequence length (bp) to retain after trimming primers:
+    m: 150
+# Phred quality score cutoffs at the ends:
+    q: "20,20"
+# Error rate (default 0.1)
+    e: 0.1
+# Minimum adapter overlap (default 3)
+    O: 3
+# Maximum number of N's:
+    mn: 3
+# Enable reverse complent option [Yes, No] (default "No"):
+    rc: "Yes"
+
+############################################################################
+# Denoising
+
+
+# Indicate if you want to pool samples together for denoising
+pooling: 'Yes'
+
+# Indicate minimum number of reads per cluster to retain (default 8)
+VSEARCH_DENOISE:
+    minsize: 8
+
+############################################################################
+# ESV x sample table
+
+VSEARCH_TABLE:
+# Indicate number of threads to use
+    t: 4
+
+# Which marker classifier will you be using?
+# Choose from ['16S', '16S_vertebrate', '18S_eukaryota', '18S_diatom', '12S_fish', '12S_vertebrate', 'ITS_fungi', '28S_fungi', 'rbcL_eukaryota', 'rbcL_diatom', 'rbcL_landPlant', 'ITS_plants', or 'COI']
+marker: 'COI'
+
+############################################################################
+# ITSx extractor (edit if needed otherwise skip over this section)
+
+# Indicate which spacer region to focus on:
+# Choose from ['ITS1' or 'ITS2']
+ITSpart: 'ITS2'
+
+############################################################################
+# Taxonomic assignment
+
+RDP:
+# enter the amount of memory to allocate to the RDP classifier here (default 8g):
+    memory: "10g"
+
+# Do you want to use a custom-trained dataset?
+# Set to 'yes' if using the following classifiers:
+# COI, 12S_fish, 12S_vertebrate, rbcL_eukaryota, rbcl_diatom, 18S_eukaryota, 18S_diatom, ITS_UNITE, ITS_plants
+# Set to 'no' if using RDP built-in classifiers:
+# 16S or ITS_fungi (lsu or warcup)
+# Choose from ['yes' or 'no']
+    custom: 'yes'
+
+# If you are using a custom-trained reference set 
+# enter the path to the trained RDP classifier rRNAClassifier.properties file here:
+    t: "/MetaWorks/mydata/rRNAClassifier.properties"
+
+# If you are using the 16S RDP classifier built-in reference set, the pipeline will use these params:
+    c: 0
+    f: "fixrank"
+
+# Otherwise you are using one of the RDP classifier built-in fungal classifiers:
+# Choose from: ['fungallsu', 'fungalits_unite', 'fungalits_warcup']
+    g: 'fungallsu'
+
+###########################################################################
+# Pseudogene filtering
+
+# Indicate if you want to filter out putative pseudogenes:
+# Set to 'no' for an rRNA gene/spacer region) or if working with protein coding gene but don't want to screen out putative pseudogenes then skip over the rest of this section
+# Set to 'yes' if working with a protein coding gene and you want to screen out putative pseudogenes
+# Choose from: ['yes' or 'no']
+pseudogene_filtering: 'yes'
+
+# Grep is used to refine the output to a single broad taxonomic group according to expected primer specificity 
+# MetaWorks uses NCBI taxonomy, whole ranks only, see https://www.ncbi.nlm.nih.gov/taxonomy
+
+# Simple grep search example:
+# Ex. To target vertebrates do
+## grep '-e Chordata'
+# run this command with genetic code 2 below
+
+# Compound grep search example:
+# Ex. To target invertebrates do
+## grep '-e Metazoa' to target Metazoa
+## grep '-v Chordata' to exclude vertebrates
+# run this with genetic code 5 below
+
+# Grep search type [1 or 2] 
+# (1) simple grep search (only taxon1 filter will be used) or 
+# (2) a compound grep search (taxon1 and taxon2 filters will be used
+grep_type: 1
+
+taxon1: '-e Arthropoda'
+taxon2: '-v Chordata'
+
+# If pseudogene_filtering was set to 'yes' then select pseudogene removal_type here
+# There are two pseudogene filtering methods available:
+# (1) removal of sequences with unusually short/long open reading frames (ex. COI, rbcL)
+# (2) HMM profile analysis and removal of sequences with unusually low HMM scores (ex. COI arthropoda)
+
+removal_type: 2
+
+# If removal_type was set to 2, then indicate the name of the hmm profile (only available for COI at this time)
+hmm: 'hmm/bold.hmm'
+
+# Translate ESVs into all open reading frames
+ORFFINDER:
+
+# genetic code:
+# 1 = standard code (use for rbcL)
+# 2 = vertebrate mitochondrial code (use for COI if targeting vertebrates)
+# 5 = invertebrate mitochondrial (use for COI if targeting invertebrates)
+# See NCBI for additional genetic codes:
+# https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+    g: 5
+
+# ORF start codon to use:
+# 0 = ATG only
+# 1 = ATG and alternative initiation codon (ORFfinder default)
+# 2 = any sense codon
+    s: 2
+
+# minimum length (ORFfinder default 75, min 30 nt)
+    ml: 30
+
+# ignore nested ORFs ['true' or 'false']
+    n: 'true'
+
+# strand ['both', 'plus', 'minus']
+    strand: 'plus'
+
+###########################################################################
+# Output options
+
+# Option 1: If you have tens to low hundreds of samples, you can choose to print a single combined report 'results.csv' that lists all ESVs per sample with read counts and assigned taxonomy in a single file
+
+# Option 2: If you have high hundreds to thousands of samples, it is more memory- and time-efficient to work with the component files separately
+# The separate ESV.table, taxonomy_seq.tsv/taxonomy_ORF.tsv, and sequence/extracted ITS/ORF FASTA files are all indexed by the same ESV id (Zotu #) and can be combined later in R for integrated analyses.  These file names will be printed in results.csv .
+
+# report_type [1 or 2]
+report_type: 1
+
+###########################################################################
+# Header for the results.csv file
+HEADER: 
+    condition6: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
+
+    condition7: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Domain,DomainRank,dBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP'
+
+    condition8: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
+
+    condition9: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP'
+
+    condition10: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
+
+    condition11: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
+    
+    condition12: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
+    
