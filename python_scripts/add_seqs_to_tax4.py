@@ -2,6 +2,7 @@
 # Alex Song, July 2025
 # This script filters the rdp.out.tmp file to include only those records that have sequences in the LongestOrfs file.
 # It outputs a tab-delimited file with the record ID,
+
 import sys
 
 # Usage: python3 filter_rdp.py LongestOrfs rdp.out.tmp > rdp.csv.tmp

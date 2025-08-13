@@ -3,6 +3,7 @@
 # Script to grab ITSx output or chimera-free output and add to taxonomy file
 # Account for a non-strictly formatted FASTA file with linebreaks in seq
 # Usage: python3 python_scripts/add_seqs_to_tax3.py ITSxOutput/ChimeraFreeOut rdp.out.tmp > rdp.csv.tmp
+
 import sys
 
 if len(sys.argv) < 3:

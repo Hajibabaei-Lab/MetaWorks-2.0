@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Alex Song, July 2025
+# Used to run the rdp classifer in parallel
 import argparse
 import math
 import os
