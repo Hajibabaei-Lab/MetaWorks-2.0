@@ -3,8 +3,10 @@ import gzip
 import statistics
 import sys
 
-input_file = sys.argv[1]
+if len(sys.argv) < 2:
+    sys.exit("Usage: python3 fastq_gz_stats.py infile.fasta.gz > outfile")
 
+input_file = sys.argv[1]
 lengths = []
 
 try:

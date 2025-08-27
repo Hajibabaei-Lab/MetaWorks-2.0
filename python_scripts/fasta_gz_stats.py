@@ -3,18 +3,17 @@ import gzip
 import statistics
 import sys
 
-# Use sys.argv to get the input file.
 if len(sys.argv) < 2:
     sys.exit("Usage: python3 fasta_gz_stats.py infile.fasta.gz > outfile")
 
 input_file = sys.argv[1]
 lengths = []
 
-# Open the gzipped FASTA file in text mode.
 try:
     with gzip.open(input_file, "rt") as f:
-        # Read all lines from the file.
-        lines = f.readlines()
+        for i, line in enumerate(f):  # Stream processing
+            if (i + 1) % 2 == 0:  # Sequence lines
+                lengths.append(len(line.strip()))
 except Exception as e:
     sys.exit(f"Error reading {input_file}: {e}")
 

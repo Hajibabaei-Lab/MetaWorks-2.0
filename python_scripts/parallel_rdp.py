@@ -15,10 +15,24 @@ def split_fasta(input_file, num_chunks, output_prefix):
     Splits the input FASTA file into num_chunks parts using FASTA records.
     Returns a list of chunk file paths.
     """
+
     # Parse the input FASTA file
-    records = list(SeqIO.parse(input_file, "fasta"))
-    total_records = len(records)
-    chunk_size = math.ceil(total_records / num_chunks)
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} not found")
+
+    try:
+        records = []
+        with open(input_file, "r") as f:
+            for record in SeqIO.parse(f, "fasta"):
+                records.append(record)
+
+        if not records:
+            raise ValueError(f"No valid FASTA records found in {input_file}")
+
+        total_records = len(records)
+        chunk_size = math.ceil(total_records / num_chunks)
+    except Exception as e:
+        raise RuntimeError(f"Error parsing FASTA file {input_file}: {str(e)}")
     chunk_files = []
 
     for i in range(num_chunks):
@@ -30,6 +44,7 @@ def split_fasta(input_file, num_chunks, output_prefix):
         chunk_files.append(chunk_filename)
     return chunk_files
 
+
 def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43200):
     """
     Executes the RDP Classifier on a given chunk file.
@@ -40,7 +55,9 @@ def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43
     cmd = f"rdp_classifier -Xmx{memory_flag} classify {options} -o {result_file} {chunk_file}"
     print(f"Running command: {cmd}")
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=timeout
+        )
         if result.returncode != 0:
             print(f"Error processing {chunk_file}:\n{result.stderr}")
             raise subprocess.CalledProcessError(result.returncode, cmd)
@@ -49,12 +66,14 @@ def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43
         raise
     return result_file
 
+
 def concatenate_files(file_list, output_file):
     """Concatenates the contents of each file in file_list into output_file."""
     with open(output_file, "w") as outfile:
         for fname in file_list:
             with open(fname, "r") as infile:
                 shutil.copyfileobj(infile, outfile)
+
 
 def cleanup_files(file_list):
     """Removes all files in file_list."""
@@ -64,13 +83,26 @@ def cleanup_files(file_list):
         except Exception as e:
             print(f"Error removing file {f}: {e}")
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Parallelize RDP Classifier execution on a FASTA file.")
+    parser = argparse.ArgumentParser(
+        description="Parallelize RDP Classifier execution on a FASTA file."
+    )
     parser.add_argument("--input", required=True, help="Path to the input FASTA file")
-    parser.add_argument("--output", required=True, help="Path for the final output file")
-    parser.add_argument("--threads", type=int, default=4, help="Number of parallel threads to use")
-    parser.add_argument("--memory", required=True, help="Memory flag for rdp_classifier (e.g., '10g')")
-    parser.add_argument("--options", required=True, help="Additional options for rdp_classifier (e.g., '-t /path/to/rRNAClassifier.properties')")
+    parser.add_argument(
+        "--output", required=True, help="Path for the final output file"
+    )
+    parser.add_argument(
+        "--threads", type=int, default=4, help="Number of parallel threads to use"
+    )
+    parser.add_argument(
+        "--memory", required=True, help="Memory flag for rdp_classifier (e.g., '10g')"
+    )
+    parser.add_argument(
+        "--options",
+        required=True,
+        help="Additional options for rdp_classifier (e.g., '-t /path/to/rRNAClassifier.properties')",
+    )
     args = parser.parse_args()
 
     # Create a temporary directory to store chunk files
@@ -86,7 +118,9 @@ def main():
     print("Running RDP Classifier in parallel on FASTA chunks...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
         future_to_chunk = {
-            executor.submit(run_rdp_classifier, chunk, args.memory, args.options, res_file): chunk
+            executor.submit(
+                run_rdp_classifier, chunk, args.memory, args.options, res_file
+            ): chunk
             for chunk, res_file in zip(chunk_files, result_files)
         }
         for future in concurrent.futures.as_completed(future_to_chunk):
@@ -106,6 +140,7 @@ def main():
     cleanup_files(chunk_files + result_files)
     os.rmdir(temp_dir)
     print("Done.")
+
 
 if __name__ == "__main__":
     main()
