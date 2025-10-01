@@ -35,7 +35,7 @@ else:
         output:
             temp(config["dir"] + "/taxonomy_seq.tsv")
         shell:
-            "python3 python_scripts/add_seqs_to_tax3.plx {input.esvs} {input.rdp} >> {output}"
+            "python3 python_scripts/add_seqs_to_tax3.py {input.esvs} {input.rdp} >> {output}"
 
     if config["report_type"] == 1:
         rule generate_results_basic:
