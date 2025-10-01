@@ -10,7 +10,7 @@ module orfs_hmm:
 
 module orfs_longest:
     snakefile: "modules/orfs_longest.smk"
-    config: {"ORFFINDER":["ORFFINDER"],"dir": config["dir"]}
+    config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
 
 # -------------------------------
 # Load external module rule files
