@@ -10,7 +10,7 @@
 # This directory should contain the compressed paired-end Illumina reads, ex. *.fastq.gz
 sample_source: "folder"
 samples_csv: "samples.csv"
-fastq_dir: "/MetaWorks/testing/COI_data"
+fastq_dir: "/MetaWorks/testing/testing_data"
 
 ############################################################################
 # Directory for the output
@@ -43,7 +43,7 @@ SEQPREP:
 # ^FwdPrimerSeq...ReverseComplementedRevPrimerSeq$
 CUTADAPT:
 # adapters.fasta file
-    fasta: "/MetaWorks/testing/adapters_anchored.fasta"
+    fasta: "testing/adapters_anchored.fasta"
 # Minimum sequence length (bp) to retain after trimming primers:
     m: 150
 # Phred quality score cutoffs at the ends:
