@@ -91,7 +91,7 @@ ITSpart: 'ITS2'
 
 RDP:
 # enter the amount of memory to allocate to the RDP classifier here (default 8g):
-    memory: "10g"
+    memory: "20g"
 
 # Do you want to use a custom-trained dataset?
 # Set to 'yes' if using the following classifiers:
