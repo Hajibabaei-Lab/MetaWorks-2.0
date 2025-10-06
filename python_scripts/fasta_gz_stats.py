@@ -17,18 +17,6 @@ try:
 except Exception as e:
     sys.exit(f"Error reading {input_file}: {e}")
 
-allseqs = [line.rstrip("\n") for i, line in enumerate(lines) if (i + 1) % 2 == 0]
-
-num = len(allseqs)
-
-# For each sequence line, calculate its length.
-for seq in allseqs:
-    lengths.append(len(seq))
-
-num2 = len(lengths)
-if num != num2:
-    print("Possible error", file=sys.stderr)
-
 count = len(lengths)
 minimum = min(lengths)
 maximum = max(lengths)
