@@ -1,5 +1,14 @@
 # rules/pseudogene.smk
 
+# Module declarations for ORF processing
+module orfs_hmm:
+    snakefile: "modules/orfs_hmm.smk"
+    config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
+
+module orfs_longest:
+    snakefile: "modules/orfs_longest.smk"
+    config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
+
 if config["pseudogene_filtering"] == 'yes':
 
     ############################
