@@ -10,7 +10,7 @@
 # This directory should contain the compressed paired-end Illumina reads, ex. *.fastq.gz
 sample_source: "folder"
 samples_csv: "samples.csv"
-fastq_dir: "/MetaWorks/testing/testing_data"
+fastq_dir: "testing/testing_data"
 
 ############################################################################
 # Directory for the output
@@ -103,7 +103,8 @@ RDP:
 
 # If you are using a custom-trained reference set 
 # enter the path to the trained RDP classifier rRNAClassifier.properties file here:
-    t: "/MetaWorks/mydata/rRNAClassifier.properties"
+# NOTE: Update this path to point to your actual classifier file location
+    t: "path/to/your/rRNAClassifier.properties"
 
 # If you are using the 16S RDP classifier built-in reference set, the pipeline will use these params:
     c: 0
@@ -207,4 +208,3 @@ HEADER:
     condition11: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
     
     condition12: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
-    

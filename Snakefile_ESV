@@ -5,11 +5,11 @@ configfile: "config/config_ESV.yaml"
 # modules for pseudogene filtering
 # --------------------------------------
 module orfs_hmm:
-    snakefile: "modules/orfs_hmm.smk"
+    snakefile: "rules/modules/orfs_hmm.smk"
     config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
 
 module orfs_longest:
-    snakefile: "modules/orfs_longest.smk"
+    snakefile: "rules/modules/orfs_longest.smk"
     config: {"ORFFINDER":config["ORFFINDER"],"dir": config["dir"]}
 
 # -------------------------------
