@@ -1,0 +1,65 @@
+# Trimming Module
+# Handles adapter trimming using Cutadapt
+
+module:
+  name: "trimming"
+  version: "2.0.0"
+  description: "Trim linked adapters from paired reads using Cutadapt"
+  author: "Hajibabaei Lab"
+  
+inputs:
+  required:
+    - dir: "Output directory for results"
+    - adapter_file: "FASTA file with linked adapter sequences"
+  
+  optional:
+    - SAMPLES_UNIQUE: "List of samples to process (from preprocessing module)"
+
+outputs:
+  primary:
+    - trimmed_fasta: "{dir}/trimmed/{sample}.fasta.gz"
+  
+  intermediate:
+    - trimmed_uncompressed: "{dir}/trimmed/{sample}.fasta"
+  
+  logs:
+    - trimming_log: "{dir}/logs/trimming/{sample}.log"
+
+checkpoints:
+  - name: trimming_complete
+    trigger: "All samples trimmed successfully"
+    output: "{dir}/checkpoints/trimming_complete.done"
+
+dependencies:
+  conda:
+    - "cutadapt>=4.0"
+    - "python>=3.8"
+  
+  scripts: []
+  
+  modules:
+    - "preprocessing"
+
+parameters:
+  cutadapt:
+    m: 150         # Minimum sequence length after trimming
+    q: "20,20"     # Quality trimming cutoffs (5' and 3')
+    e: 0.1         # Maximum allowed error rate
+    O: 3           # Minimum adapter overlap
+    mn: 3          # Maximum number of N's allowed
+    rc: "No"       # Enable reverse complement mode
+
+resources:
+  threads: 1
+  memory_mb: 4000
+  time_minutes: 60
+
+validation:
+  - check: "file_exists"
+    param: "adapter_file"
+  - check: "value_positive"
+    param: "cutadapt.m"
+  - check: "value_in_range"
+    param: "cutadapt.e"
+    min: 0
+    max: 1
