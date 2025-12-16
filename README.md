@@ -26,6 +26,8 @@ A [tutorial](https://terrimporter.github.io/MetaWorksSite/tutorial/) provides st
 
 *NEW* We added answers to some [frequently asked questions (FAQs)](https://terrimporter.github.io/MetaWorksSite/faq) about MetaWorks and data analysis to the [MetaWorks website](https://terrimporter.github.io/MetaWorksSite).
 
+For the control-node API and web UI that can launch ESV/OTU runs via conda, Docker, or Apptainer on a single node, see `docs/REMOTE_API_UI.md`.
+
 ## How to cite
 
 If you use this dataflow or any of the provided scripts, please cite the MetaWorks paper:  

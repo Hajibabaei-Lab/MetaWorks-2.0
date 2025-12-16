@@ -1,0 +1,37 @@
+# Configuration template for MetaWorks OTU workflow
+
+# Identify raw read files
+sample_source: "folder"
+samples_csv: "samples.csv"
+fastq_dir: "testing/testing_data"
+
+# Directory for the output
+dir: "OTU_RUN"
+
+# Primer trimming (reuse adapters file convention)
+CUTADAPT:
+    fasta: "testing/adapters_anchored.fasta"
+    m: 150
+    q: "20,20"
+    e: 0.1
+    O: 3
+    mn: 3
+    rc: "Yes"
+
+# OTU clustering parameters
+VSEARCH_CLUSTER:
+    id: 0.97
+    minsize: 8
+    threads: 8
+
+# Taxonomic assignment (RDP)
+RDP:
+    memory: "20g"
+    custom: "yes"
+    t: "path/to/your/rRNAClassifier.properties"
+    c: 0
+    f: "fixrank"
+    g: "fungallsu"
+
+# Output options
+report_type: 1

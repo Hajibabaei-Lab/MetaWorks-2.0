@@ -191,20 +191,3 @@ ORFFINDER:
 
 # report_type [1 or 2]
 report_type: 1
-
-###########################################################################
-# Header for the results.csv file
-HEADER: 
-    condition6: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
-
-    condition7: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Domain,DomainRank,dBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP'
-
-    condition8: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
-
-    condition9: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP'
-
-    condition10: 'GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
-
-    condition11: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'
-    
-    condition12: 'GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP'

@@ -1,0 +1,89 @@
+# Pseudogene Module
+# Handles pseudogene filtering using ORF analysis
+
+module:
+  name: "pseudogene"
+  version: "2.0.0"
+  description: "Filter putative pseudogenes using ORF analysis (longest ORF or HMM-based methods)"
+  author: "Hajibabaei Lab"
+  
+inputs:
+  required:
+    - dir: "Output directory for results"
+    - rdp_output: "{dir}/rdp.out.tmp"  # From classification module
+    - esv_table: "{dir}/ESV.table.tmp"  # From denoising module
+  
+  optional:
+    - pseudogene_filtering: "Whether to run pseudogene filtering ('yes' or 'no', default: 'no')"
+    - removal_type: "Type of pseudogene removal (1 for longest ORF, 2 for HMM-based, default: 1)"
+
+outputs:
+  primary:
+    - filtered_taxonomy: "{dir}/taxonomy.csv"
+    - filtered_esv_table: "{dir}/ESV.table"
+  
+  intermediate:
+    - taxon_subset: "{dir}/taxon.zotus"
+    - taxon_sequences: "{dir}/chimera.denoised.nonchimeras.taxon"
+    - orfs_nt: "{dir}/orfs.fasta.nt.hmm"  # For HMM method
+    - orfs_aa: "{dir}/orfs.fasta.aa.hmm"  # For HMM method
+    - longest_orfs: "{dir}/longest.orfs.fasta"  # For longest ORF method
+  
+  logs:
+    - pseudogene_log: "{dir}/logs/pseudogene.log"
+
+checkpoints:
+  - name: pseudogene_filtering_complete
+    trigger: "Pseudogene filtering complete"
+    output: "{dir}/checkpoints/pseudogene_complete.done"
+
+dependencies:
+  conda:
+    - "hmmer>=3.0"
+    - "orf-finder"  # ORFfinder
+    - "python>=3.8"
+  
+  scripts:
+    - "python_scripts/get_taxon_only.py"
+    - "python_scripts/filter_rdp_taxonomy.py"
+    - "python_scripts/filter_ESV_table.py"
+    - "python_scripts/parse_orfs3.py"
+    - "python_scripts/parse_orfs4.py"
+    - "python_scripts/filter_rdp.py"
+    - "python_scripts/add_seqs_to_tax4.py"
+  
+  modules:
+    - "classification"
+    - "denoising"
+
+parameters:
+  orffinder:
+    g: 5        # Genetic code (5 = invertebrate mitochondrial for COI)
+    s: 2        # ORF start codon (0=ATG only, 1=ATG+alt, 2=any sense)
+    ml: 30      # Minimum length (nt)
+    n: 'true'   # Ignore nested ORFs
+    strand: 'plus'  # Strand to search ('plus', 'minus', 'both')
+  
+  hmm:
+    path: "hmm/bold.hmm"  # Path to HMM profile (for HMM method)
+  
+  grep:
+    taxon1: '-e Arthropoda' # First taxonomic filter
+    taxon2: '-v Chordata'   # Second taxonomic filter (for grep_type 2)
+    type: 1                 # Grep type (1=simple, 2=compound)
+
+resources:
+  threads: 4
+  memory_mb: 8000
+  time_minutes: 180
+
+validation:
+  - check: "value_in_list"
+    param: "pseudogene_filtering"
+    values: ["yes", "no", null]
+  - check: "value_in_list"
+    param: "removal_type"
+    values: [1, 2, null]
+  - check: "file_exists"
+    param: "hmm.path"
+    condition: "removal_type == 2"

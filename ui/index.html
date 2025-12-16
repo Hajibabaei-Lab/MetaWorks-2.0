@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetaWorks Control Node</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">MetaWorks 2.0 • Control Node</p>
+        <h1>Launch and monitor ESV/OTU runs from the control node.</h1>
+        <p class="lede">Stage inputs, render configs, submit to the scheduler, stream logs, cancel runs, and manage classifier/adapter assets.</p>
+        <div class="badges">
+          <span class="chip">HPC aware</span>
+          <span class="chip">Snakemake</span>
+          <span class="chip">ESV/OTU</span>
+        </div>
+      </div>
+      <div class="hero-card">
+        <p>API Endpoint</p>
+        <code id="api-base">auto-detected</code>
+        <small>Change via METAWORKS_ env vars when starting uvicorn.</small>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-view-target="setup-view">Setup</button>
+      <button class="tab" data-view-target="runs-view">Runs & Logs</button>
+    </div>
+
+    <main>
+      <div id="setup-view" class="view active">
+        <div class="grid">
+          <section class="panel">
+            <h2>Submit Run</h2>
+            <form id="run-form">
+              <label>Workflow
+                <select name="workflow">
+                  <option value="esv">ESV</option>
+                  <option value="otu">OTU</option>
+                </select>
+              </label>
+              <p class="hint">If left blank, the repo is auto-bound to /workspace; add additional binds only if your data lives elsewhere.</p>
+              <p class="eyebrow">Defaults below target the bundled test data inside the container.</p>
+              <label>Runtime
+                <select name="runtime" id="runtime-select">
+                  <option value="conda">Conda (host)</option>
+                  <option value="docker" selected>Docker</option>
+                  <option value="apptainer">Apptainer</option>
+                </select>
+              </label>
+              <div id="container-fields" class="container-fields">
+                <label>Container image URI
+                  <input type="text" name="container_image" value="docker://metaworks:latest" placeholder="docker://metaworks:latest or /path/to/image.sif">
+                </label>
+                <label>Bind paths (one per line, src:dest)
+                  <textarea id="bind-paths" name="bind_paths" rows="3" placeholder="Repo auto-binds to /workspace; add extra binds if needed."></textarea>
+                </label>
+                <label>Cache / prefix dir
+                  <input id="cache-dir" type="text" name="cache_dir" value="/workspace/runtime/cache" placeholder="/workspace/runtime/cache">
+                </label>
+                <p class="hint">Shown for docker/apptainer to keep run/data paths visible inside the container runtime.</p>
+              </div>
+              <label>Run name
+                <input type="text" name="run_name" value="COI" placeholder="COI (used as dir name in config and log path)" required>
+              </label>
+              <label>Input directory (shared FS)
+                <input id="input-dir" type="text" name="input_dir" value="/workspace/testing/testing_data" placeholder="/workspace/testing/testing_data" required>
+              </label>
+              <label>Samples CSV (optional)
+                <input type="text" name="samples_csv" placeholder="/data/samples.csv">
+              </label>
+              <label>Sample source
+                <select name="sample_source">
+                  <option value="folder">folder</option>
+                  <option value="csv">csv</option>
+                </select>
+              </label>
+              <div class="split">
+                <label>Cores
+                  <input type="number" name="cores" placeholder="default">
+                </label>
+                <label>Memory (GB)
+                  <input type="number" name="mem_gb" placeholder="default">
+                </label>
+              </div>
+              <label class="checkbox">
+                <input type="checkbox" name="dry_run"> Dry-run (stage only, do not submit)
+              </label>
+              <button type="submit">Submit to scheduler</button>
+            </form>
+            <pre id="run-response" class="console"></pre>
+          </section>
+
+          <section class="panel">
+            <h2>Config Templates</h2>
+            <p class="hint">Edit per-section overrides instead of pasting JSON. Only changed sections are sent with the run.</p>
+            <div class="split">
+              <button data-workflow="esv" class="ghost" onclick="loadDefaultConfig('esv')">Load ESV sections</button>
+              <button data-workflow="otu" class="ghost" onclick="loadDefaultConfig('otu')">Load OTU sections</button>
+            </div>
+            <div id="config-cards" class="config-cards"></div>
+            <div class="button-row">
+              <button class="ghost" onclick="resetOverrides()">Reset overrides</button>
+              <button class="ghost" onclick="renderMergedConfig()">Preview merged config</button>
+            </div>
+            <pre id="config-view" class="console" aria-label="Merged config preview"></pre>
+          </section>
+
+          <section class="panel">
+            <h2>Classifiers & Adapters</h2>
+            <div class="callout">
+              <p><strong>Paths to use in config cards</strong></p>
+              <p class="muted">Uploads live under <code>/workspace/runtime/adapters</code> and <code>/workspace/runtime/classifiers</code> inside container runs (host paths: <code>runtime/adapters</code>, <code>runtime/classifiers</code>).</p>
+              <p class="muted">Use those paths in <code>CUTADAPT.fasta</code> and <code>RDP.t</code> after setting <code>RDP.custom</code> to <code>yes</code>. If you store files elsewhere, add a bind path in the submit form and reference the inside-container path.</p>
+            </div>
+            <div class="split">
+              <div>
+                <p class="eyebrow">Classifier upload</p>
+                <input type="file" id="classifier-file">
+                <button class="ghost" onclick="uploadAsset('classifiers')">Upload</button>
+                <ul id="classifier-list"></ul>
+              </div>
+              <div>
+                <p class="eyebrow">Adapter FASTA upload</p>
+                <input type="file" id="adapter-file">
+                <button class="ghost" onclick="uploadAsset('adapters')">Upload</button>
+                <ul id="adapter-list"></ul>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="runs-view" class="view">
+        <section class="panel">
+          <h2>Track Runs</h2>
+          <div class="split stackable">
+            <label>Attach an existing run ID
+              <input type="text" id="attach-run-input" placeholder="esv-20250101...">
+            </label>
+            <div class="button-row">
+              <button class="ghost" id="attach-run-btn">Add to run board</button>
+              <button class="ghost" id="refresh-all-btn">Refresh all now</button>
+            </div>
+          </div>
+          <p class="hint">New submissions automatically add a card here. Each card auto-refreshes status and logs every 5 seconds.</p>
+          <p class="eyebrow" id="polling-count">0 runs auto-refreshing</p>
+        </section>
+
+        <div id="runs-container" class="runs-grid">
+          <p id="empty-runs" class="muted">No runs tracked yet.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

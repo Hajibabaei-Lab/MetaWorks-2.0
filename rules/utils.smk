@@ -64,6 +64,16 @@ tax3_abund10 = ['18S_diatom', 'rbcL_diatom']
 orf3_tax4_abund12 = ['COI', 'rbcL_landPlant', 'rbcL_eukaryota']
 orf3_tax4_abund11 = ['rbcL_diatom']
 
+HEADERS = {
+    "condition6": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
+    "condition7": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Domain,DomainRank,dBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP",
+    "condition9": "",
+    "condition10": "",
+    "condition11": "",
+    "condition12": "",
+    "default": "",
+}
+
 def condition_key(config):
     if config["marker"] in tax3_abund6:
         return "condition6"
@@ -80,3 +90,10 @@ def condition_key(config):
     else:
         print("Unknown marker for results configuration.")
         return "default"
+
+
+def header_value(config):
+    """Resolve the header string for results based on marker."""
+    key = condition_key(config)
+    cfg_headers = config.get("HEADER", {}) if isinstance(config, dict) else {}
+    return cfg_headers.get(key, HEADERS.get(key, ""))

@@ -18,7 +18,7 @@ if config["pseudogene_filtering"] == "yes":
                 rdp = config["dir"] + "/taxonomy_ORF.tsv"
             output: config["dir"] + "/results.csv"
             params:
-                header = condition_key(config)
+                header = header_value(config)
             shell:
                 "python3 python_scripts/add_abundance_to_rdp_out.py {input.table} {input.rdp} '{params.header}' > {output}"
 
@@ -44,7 +44,7 @@ else:
                 rdp = config["dir"] + "/taxonomy_seq.tsv"
             output: config["dir"] + "/results.csv"
             params:
-                header = condition_key(config)
+                header = header_value(config)
             shell:
                 "python3 python_scripts/add_abundance_to_rdp_out.py {input.table} {input.rdp} '{params.header}' > {output}"
 
