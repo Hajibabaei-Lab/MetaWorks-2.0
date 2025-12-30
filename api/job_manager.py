@@ -1,16 +1,23 @@
-import json
 import os
 import shlex
 import shutil
 import signal
 import subprocess
-import sys
 import threading
 from datetime import datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+
+from lib.exceptions import (
+    ConfigurationError,
+    FileProcessingError,
+    PipelineExecutionError,
+    StateManagementError,
+)
+from lib.runtime import CondaRuntime, DockerRuntime, SingularityRuntime
+from lib.state_management import RunMetadata, RunStateStore
 
 from .config import settings
 from .schemas import (
@@ -34,52 +41,23 @@ def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, An
     return merged
 
 
-class RunStateStore:
-    """JSON-backed run metadata store."""
-
-    def __init__(self, state_file: Path):
-        self.state_file = state_file
-        state_file.parent.mkdir(parents=True, exist_ok=True)
-        if not state_file.exists():
-            self._write({})
-        self._data = self._read()
-
-    def _read(self) -> Dict[str, Any]:
-        with self.state_file.open() as fh:
-            return json.load(fh)
-
-    def _write(self, data: Dict[str, Any]) -> None:
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.state_file.open("w") as fh:
-            json.dump(data, fh, indent=2, default=str)
-
-    def set(self, run_id: str, payload: Dict[str, Any]) -> None:
-        self._data[run_id] = payload
-        self._write(self._data)
-
-    def get(self, run_id: str) -> Optional[Dict[str, Any]]:
-        return self._data.get(run_id)
-
-    def all(self) -> Dict[str, Any]:
-        return self._data
-
-    def delete(self, run_id: str) -> None:
-        if run_id in self._data:
-            del self._data[run_id]
-            self._write(self._data)
-
-
 class SnakemakeRunner:
     """Runtime-aware Snakemake command builder and launcher."""
 
     def __init__(self):
         self.repo_root = settings.repo_root
-        self.container_repo = PurePosixPath("/workspace")
+        self.conda_handler = CondaRuntime(repo_root=settings.repo_root)
+        self.docker_handler = DockerRuntime(repo_root=settings.repo_root)
+        self.singularity_handler = SingularityRuntime(repo_root=settings.repo_root)
 
     def _snakefile_for(self, workflow: WorkflowType) -> Path:
         snakefile = settings.snakefiles.get(workflow.value)
         if snakefile is None:
-            raise ValueError(f"No snakefile configured for workflow {workflow}")
+            raise ConfigurationError(
+                f"No snakefile configured for workflow {workflow}",
+                config_key=f"snakefiles.{workflow.value}",
+                suggestion=f"Add snakefile path to settings for {workflow.value}",
+            )
         snakefile_path = Path(snakefile)
         if not snakefile_path.is_absolute():
             snakefile_path = self.repo_root / snakefile_path
@@ -93,89 +71,47 @@ class SnakemakeRunner:
                 binds.append(item)
         return binds
 
-    def _container_path(self, path: Path) -> str:
-        """Map a host path under the repo into the container workspace."""
-        try:
-            rel = path.resolve().relative_to(self.repo_root.resolve())
-        except ValueError as exc:
-            raise ValueError(
-                f"Path {path} must live under the repository root {self.repo_root} for container runtimes. "
-                "Move it under the repo or provide an explicit bind mapping."
-            ) from exc
-        return str(self.container_repo / rel.as_posix())
-
-    def _normalize_host_path(self, path: Path) -> str:
-        """Return a POSIX-ish string for docker binds even on Windows paths."""
-        return path.resolve().as_posix()
-
-    def build_command(self, submission: RunSubmissionRequest, config_path: Path, run_dir: Path) -> List[str]:
+    def build_command(
+        self, submission: RunSubmissionRequest, config_path: Path, run_dir: Path
+    ) -> List[str]:
+        """Build Snakemake command using appropriate runtime handler."""
         snakefile = self._snakefile_for(submission.workflow)
         cores = submission.cores or settings.default_cores
-        workdir_host = run_dir.resolve()
 
-        base_snake_args = [
-            "snakemake",
-            "-s",
-            str(snakefile),
-            "--configfile",
-            str(config_path),
-            "--cores",
-            str(cores),
-            "--printshellcmds",
-            "--directory",
-            str(workdir_host),
-        ]
-
+        # Select appropriate runtime handler
         if submission.runtime == RuntimeType.conda:
-            return [sys.executable, "-m"] + base_snake_args
+            return self.conda_handler.build_command(
+                snakefile=snakefile, config_path=config_path, workdir=run_dir, cores=cores
+            )
 
+        # For container runtimes, get image and additional bind paths
         container_image = submission.container_image or settings.container_image
-        repo_bind = f"{self._normalize_host_path(self.repo_root)}:{self.container_repo}"
-        binds = [repo_bind] + self._resolve_binds(run_dir, submission)
-
-        snakefile_in_container = self._container_path(snakefile)
-        config_in_container = self._container_path(config_path)
-        workdir_container = self._container_path(workdir_host)
-
-        base_snake_args = [
-            "snakemake",
-            "-s",
-            snakefile_in_container,
-            "--configfile",
-            config_in_container,
-            "--cores",
-            str(cores),
-            "--printshellcmds",
-            "--directory",
-            workdir_container,
-        ]
+        additional_binds = self._resolve_binds(run_dir, submission)
 
         if submission.runtime == RuntimeType.docker:
-            image_ref = container_image
-            if image_ref.startswith("docker://"):
-                image_ref = image_ref[len("docker://") :]
-            cmd: List[str] = ["docker", "run", "--rm"]
-            for bind in binds:
-                cmd += ["-v", bind]
-            cmd += ["-w", workdir_container, image_ref] + base_snake_args
-            return cmd
+            return self.docker_handler.build_command(
+                snakefile=snakefile,
+                config_path=config_path,
+                workdir=run_dir,
+                cores=cores,
+                image=container_image,
+                additional_binds=additional_binds,
+            )
 
-        cache_dir = Path(submission.cache_dir or settings.singularity_cache)
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            "apptainer",
-            "exec",
-            "-B",
-            ",".join(binds),
-            "--pwd",
-            workdir_container,
-            "--cache-dir",
-            str(cache_dir),
-            container_image,
-        ] + base_snake_args
-        return cmd
+        # Singularity runtime
+        cache_dir = submission.cache_dir or settings.singularity_cache
+        return self.singularity_handler.build_command(
+            snakefile=snakefile,
+            config_path=config_path,
+            workdir=run_dir,
+            cores=cores,
+            image=container_image,
+            additional_binds=additional_binds,
+            cache_dir=Path(cache_dir),
+        )
 
     def launch(self, command: List[str], log_path: Path) -> subprocess.Popen:
+        """Launch a subprocess with proper configuration."""
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_file = log_path.open("a")
         # Run from repo root to keep Snakefile relative paths stable.
@@ -193,21 +129,96 @@ class SnakemakeRunner:
 
 class JobManager:
     def __init__(self):
-        self.store = RunStateStore(settings.state_file)
+        self._state_store = RunStateStore(settings.state_file)
         self.runner = SnakemakeRunner()
         settings.run_root.mkdir(parents=True, exist_ok=True)
         settings.artifact_root.mkdir(parents=True, exist_ok=True)
         settings.staging_root.mkdir(parents=True, exist_ok=True)
         settings.singularity_cache.mkdir(parents=True, exist_ok=True)
 
+    def _dict_to_metadata(self, run_id: str, record: Dict[str, Any]) -> RunMetadata:
+        """Convert dict record to RunMetadata for storage."""
+        return RunMetadata(
+            run_id=run_id,
+            workflow=record.get("workflow"),
+            runtime=record.get("runtime"),
+            status=record.get("status"),
+            submitted_at=record.get("submitted_at"),
+            started_at=record.get("started_at"),
+            ended_at=record.get("ended_at"),
+            run_dir=record.get("run_dir"),
+            run_name=record.get("run_name"),
+            sample_source=record.get("sample_source"),
+            config_overrides=record.get("config_overrides"),
+            input_dir=record.get("input_dir"),
+            samples_csv=record.get("samples_csv"),
+            notes=record.get("notes"),
+            pid=record.get("pid"),
+            log_path=record.get("log_path"),
+            command=record.get("command"),
+            message=record.get("message"),
+            return_code=record.get("return_code"),
+            artifact_path=record.get("artifact_path"),
+            scheduler_job_id=record.get("scheduler_job_id"),
+        )
+
+    def _metadata_to_dict(self, metadata: RunMetadata) -> Dict[str, Any]:
+        """Convert RunMetadata back to dict for API compatibility."""
+        record = metadata.to_dict()
+        # Ensure backward compatibility with field name changes
+        if "ended_at" in record and "return_code" in record:
+            pass  # Already in correct format
+        return record
+
+    def _get_metadata(self, run_id: str) -> Optional[RunMetadata]:
+        """Get run metadata from state store."""
+        return self._state_store.get_run(run_id)
+
+    def _set_metadata(self, run_id: str, record: Dict[str, Any]) -> None:
+        """Set run metadata in state store."""
+        metadata = self._dict_to_metadata(run_id, record)
+        existing = self._state_store.get_run(run_id)
+        if existing:
+            self._state_store.update_run(run_id, record)
+        else:
+            self._state_store.create_run(run_id, metadata)
+
+    def _all_runs(self) -> Dict[str, Any]:
+        """Get all runs as dict for compatibility."""
+        runs = self._state_store.list_runs()
+        return {run_id: self._metadata_to_dict(metadata) for run_id, metadata in runs.items()}
+
+    def _delete_run_state(self, run_id: str) -> None:
+        """Delete run from state store."""
+        self._state_store.delete_run(run_id)
+
     def _load_default_config(self, workflow: WorkflowType) -> Dict[str, Any]:
         path = settings.default_configs.get(workflow.value)
         if not path:
-            raise ValueError(f"No default config registered for workflow {workflow}")
-        with Path(path).open() as fh:
-            return yaml.safe_load(fh)
+            raise ConfigurationError(
+                f"No default config registered for workflow {workflow}",
+                config_key=f"default_configs.{workflow.value}",
+                suggestion="Check settings.default_configs configuration",
+            )
+        try:
+            with Path(path).open() as fh:
+                return yaml.safe_load(fh)
+        except yaml.YAMLError as exc:
+            raise ConfigurationError(
+                f"Invalid YAML in config file: {path}",
+                filepath=str(path),
+                suggestion=f"Fix YAML syntax in {path}",
+            ) from exc
+        except FileNotFoundError as exc:
+            raise ConfigurationError(
+                f"Config file not found: {path}",
+                filepath=str(path),
+                suggestion="Verify config file path in settings",
+            ) from exc
 
-    def render_config(self, workflow: WorkflowType, overrides: Dict[str, Any]) -> RenderConfigResponse:
+    def render_config(
+        self, workflow: WorkflowType, overrides: Dict[str, Any]
+    ) -> RenderConfigResponse:
         base_config = self._load_default_config(workflow)
         merged = _deep_merge(base_config, overrides or {})
         rendered = yaml.safe_dump(merged, sort_keys=False)
@@ -216,7 +227,9 @@ class JobManager:
     def default_config_sections(self, workflow: WorkflowType) -> Dict[str, Any]:
         return self._load_default_config(workflow)
 
-    def _write_rendered_config(self, run_dir: Path, workflow: WorkflowType, overrides: Dict[str, Any]) -> Path:
+    def _write_rendered_config(
+        self, run_dir: Path, workflow: WorkflowType, overrides: Dict[str, Any]
+    ) -> Path:
         rendered = self.render_config(workflow, overrides)
         config_path = run_dir / "rendered_config.yaml"
         config_path.write_text(rendered.merged)
@@ -226,11 +239,24 @@ class JobManager:
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         run_id = f"{submission.workflow.value}-{timestamp}"
         run_dir = settings.run_root / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            run_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise FileProcessingError(
+                f"Failed to create run directory: {run_dir}",
+                filepath=str(run_dir),
+                suggestion="Check permissions and disk space",
+            ) from exc
+
         try:
             runtime = submission.runtime or RuntimeType(settings.default_runtime)
         except ValueError as exc:
-            raise ValueError(f"Unsupported runtime '{settings.default_runtime}'") from exc
+            raise ConfigurationError(
+                f"Unsupported runtime '{settings.default_runtime}'",
+                config_key="default_runtime",
+                suggestion="Use one of: conda, docker, singularity",
+            ) from exc
         submission = submission.copy(update={"runtime": runtime})
 
         # Record run metadata early
@@ -251,7 +277,7 @@ class JobManager:
             "pid": None,
             "log_path": str(run_dir / "logs" / "snakemake.log"),
         }
-        self.store.set(run_id, record)
+        self._set_metadata(run_id, record)
 
         config_path = self._write_rendered_config(
             run_dir, submission.workflow, submission.config_overrides
@@ -263,7 +289,7 @@ class JobManager:
         if submission.dry_run:
             record["status"] = "staged"
             record["message"] = f"Dry run. Command: {record['command']}"
-            self.store.set(run_id, record)
+            self._set_metadata(run_id, record)
             return RunStatus(**record)
 
         log_path = Path(record["log_path"])
@@ -272,7 +298,7 @@ class JobManager:
         record["status"] = "running"
         record["started_at"] = datetime.utcnow().isoformat()
         record["message"] = f"Running with PID {process.pid}"
-        self.store.set(run_id, record)
+        self._set_metadata(run_id, record)
 
         monitor_thread = threading.Thread(
             target=self._watch_process, args=(run_id, process), daemon=True
@@ -283,35 +309,46 @@ class JobManager:
     def _watch_process(self, run_id: str, process: subprocess.Popen) -> None:
         """Wait for a process and update run metadata."""
         return_code = process.wait()
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
             return
+        record = self._metadata_to_dict(record)
         record["return_code"] = return_code
         record["ended_at"] = datetime.utcnow().isoformat()
         record["status"] = "completed" if return_code == 0 else "failed"
         record["message"] = (
             f"Exited with code {return_code}" if return_code != 0 else "Run completed successfully"
         )
-        self.store.set(run_id, record)
+        self._set_metadata(run_id, record)
 
     def get_status(self, run_id: str) -> RunStatus:
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
-            raise ValueError(f"Unknown run_id {run_id}")
-        # Refresh status if the process ended since the last check.
+            raise StateManagementError(
+                f"Unknown run_id {run_id}",
+                run_id=run_id,
+                suggestion="Check run ID or list all runs",
+            )
+        record = self._metadata_to_dict(record)
+        # Refresh status if process ended since last check.
         if record.get("status") == "running" and record.get("pid"):
             pid = int(record["pid"])
             if not self._pid_alive(pid):
                 record["status"] = "completed" if record.get("return_code", 1) == 0 else "failed"
                 record["ended_at"] = record.get("ended_at") or datetime.utcnow().isoformat()
                 record["message"] = record.get("message") or "Process ended"
-                self.store.set(run_id, record)
+                self._set_metadata(run_id, record)
         return RunStatus(**record)
 
     def cancel_run(self, run_id: str) -> RunStatus:
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
-            raise ValueError(f"Unknown run_id {run_id}")
+            raise StateManagementError(
+                f"Unknown run_id {run_id}",
+                run_id=run_id,
+                suggestion="Check run ID or list all runs",
+            )
+        record = self._metadata_to_dict(record)
         pid = record.get("pid")
         if pid:
             try:
@@ -323,10 +360,14 @@ class JobManager:
             except ProcessLookupError:
                 record["message"] = f"PID {pid} was not running"
             except OSError as exc:
-                record["message"] = f"Could not terminate PID {pid}: {exc}"
+                raise PipelineExecutionError(
+                    f"Could not terminate PID {pid}: {exc}",
+                    stage="cancel",
+                    suggestion="Check if process is still running",
+                ) from exc
         record["status"] = "cancelled"
         record["ended_at"] = datetime.utcnow().isoformat()
-        self.store.set(run_id, record)
+        self._set_metadata(run_id, record)
         return RunStatus(**record)
 
     def _pid_alive(self, pid: int) -> bool:
@@ -337,39 +378,78 @@ class JobManager:
         return True
 
     def tail_logs(self, run_id: str, lines: Optional[int] = None) -> Dict[str, Any]:
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
-            raise ValueError(f"Unknown run_id {run_id}")
+            raise StateManagementError(
+                f"Unknown run_id {run_id}",
+                run_id=run_id,
+                suggestion="Check run ID or list all runs",
+            )
+        record = self._metadata_to_dict(record)
         run_dir = Path(record["run_dir"])
         log_dir = run_dir / "logs"
         target_log = Path(record.get("log_path") or (log_dir / "snakemake.log"))
         if not target_log.exists():
             return {"run_id": run_id, "tail": ["log not yet available"]}
 
-        num_lines = lines or settings.log_tail_lines
-        content = target_log.read_text().splitlines()[-num_lines:]
-        return {"run_id": run_id, "tail": content}
+        try:
+            num_lines = lines or settings.log_tail_lines
+            content = target_log.read_text().splitlines()[-num_lines:]
+            return {"run_id": run_id, "tail": content}
+        except IOError as exc:
+            raise FileProcessingError(
+                f"Failed to read log file: {target_log}",
+                filepath=str(target_log),
+                suggestion="Check file permissions",
+            ) from exc
 
     def package_artifacts(self, run_id: str) -> ArtifactResponse:
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
-            raise ValueError(f"Unknown run_id {run_id}")
+            raise StateManagementError(
+                f"Unknown run_id {run_id}",
+                run_id=run_id,
+                suggestion="Check run ID or list all runs",
+            )
+        record = self._metadata_to_dict(record)
         run_dir = Path(record["run_dir"])
         archive_path = settings.artifact_root / f"{run_id}.tar.gz"
-        archive_path.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            f"tar -czf {archive_path} -C {run_dir} .",
-            shell=True,
-            check=False,
-        )
+
+        try:
+            archive_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise FileProcessingError(
+                f"Failed to create artifact directory: {archive_path.parent}",
+                filepath=str(archive_path.parent),
+                suggestion="Check permissions and disk space",
+            ) from exc
+
+        try:
+            subprocess.run(
+                f"tar -czf {archive_path} -C {run_dir} .",
+                shell=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise FileProcessingError(
+                f"Failed to create archive: {archive_path}",
+                filepath=str(archive_path),
+                suggestion=f"Check disk space and run directory contents: {run_dir}",
+            ) from exc
+
         record["artifact_path"] = str(archive_path)
-        self.store.set(run_id, record)
+        self._set_metadata(run_id, record)
         return ArtifactResponse(run_id=run_id, archive_path=str(archive_path))
 
     def delete_run(self, run_id: str) -> Dict[str, Any]:
-        record = self.store.get(run_id)
+        record = self._get_metadata(run_id)
         if not record:
-            raise ValueError(f"Unknown run_id {run_id}")
+            raise StateManagementError(
+                f"Unknown run_id {run_id}",
+                run_id=run_id,
+                suggestion="Check run ID or list all runs",
+            )
+        record = self._metadata_to_dict(record)
 
         # Best-effort cancel before deleting (even if status is stale).
         try:
@@ -386,13 +466,24 @@ class JobManager:
             except FileNotFoundError:
                 return
             if allowed_root not in target.parents and target != allowed_root:
-                raise ValueError(f"Refusing to delete path outside allowed root: {target}")
+                raise FileProcessingError(
+                    f"Refusing to delete path outside allowed root: {target}",
+                    filepath=str(target),
+                    suggestion="Verify file paths are within expected directories",
+                )
             if target.exists():
-                if target.is_dir():
-                    shutil.rmtree(target)
-                else:
-                    target.unlink()
-                removed.append(str(target))
+                try:
+                    if target.is_dir():
+                        shutil.rmtree(target)
+                    else:
+                        target.unlink()
+                    removed.append(str(target))
+                except OSError as exc:
+                    raise FileProcessingError(
+                        f"Failed to delete {target}: {exc}",
+                        filepath=str(target),
+                        suggestion="Check file permissions",
+                    ) from exc
 
         run_dir = Path(record["run_dir"])
         try:
@@ -417,11 +508,11 @@ class JobManager:
 
         # Clean up any stray Snakemake cache under repo_root if no runs remain.
         try:
-            if not self.store.all():
+            if not self._all_runs():
                 repo_snakemake = settings.repo_root / ".snakemake"
                 _safe_remove(repo_snakemake, settings.repo_root)
         except Exception:
             pass
 
-        self.store.delete(run_id)
+        self._delete_run_state(run_id)
         return {"run_id": run_id, "removed_paths": removed}

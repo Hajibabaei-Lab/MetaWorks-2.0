@@ -1,0 +1,175 @@
+# MetaWorks User Configuration
+# Edit this file to customize your pipeline
+# For detailed explanations, see docs/CONFIGURATION_GUIDE.md
+
+# ============================================================================
+# Pipeline Selection
+# ============================================================================
+pipeline:
+  # Pipeline type: "esv" for Exact Sequence Variants, "otu" for Operational Taxonomic Units
+  name: "esv"
+
+  # Directory name for output results (no spaces, use underscores)
+  output_dir: "COI_results"
+
+  # Number of samples to process in parallel
+  parallel_jobs: 4
+
+# ============================================================================
+# Input Data
+# ============================================================================
+input:
+  # Method to find samples: "folder" (auto-detect) or "csv" (manual list)
+  sample_source: "folder"
+
+  # CSV file with sample information (required if sample_source="csv")
+  samples_csv: "samples.csv"
+
+  # Directory containing paired-end FASTQ files (*.fastq.gz)
+  fastq_dir: "tests/testing_data"
+
+# ============================================================================
+# Module Selection
+# Set to false to skip a module
+# ============================================================================
+modules:
+  preprocessing: true
+  trimming: true
+  denoising: true
+  classification: true
+  pseudogene_filtering: false
+  stats: true
+
+# ============================================================================
+# Module-Specific Parameters
+# Only override defaults if needed
+# ============================================================================
+
+# Preprocessing: Quality filtering and read merging with SeqPrep
+preprocessing:
+  # Phred quality score cutoff (0-40, default 13)
+  quality_score: 13
+
+  # Minimum overlap length between reads (10-100 bp, default 25)
+  min_overlap: 25
+
+  # Maximum fraction of mismatches in overlap (0.0-0.5, default 0.02)
+  max_mismatch: 0.02
+
+  # Minimum fraction of matching overlap (0.0-1.0, default 0.90)
+  min_match: 0.90
+
+# Trimming: Remove adapter sequences with Cutadapt
+trimming:
+  # Path to adapter sequences FASTA file
+  adapters: "tests/adapters_anchored.fasta"
+
+  # Minimum sequence length after trimming (bp)
+  min_length: 150
+
+  # Quality cutoffs for read ends (5' and 3')
+  quality_cutoff: "20,20"
+
+  # Error rate for adapter matching (0.0-1.0, default 0.1)
+  error_rate: 0.1
+
+  # Minimum adapter overlap (bp, default 3)
+  min_adapter_overlap: 3
+
+  # Maximum number of N bases allowed
+  max_n_bases: 3
+
+  # Enable reverse complement option (true/false)
+  enable_rc: true
+
+# Denoising: Generate ESVs with VSEARCH
+denoising:
+  # Pool all samples for denoising (true/false)
+  pool_samples: true
+
+  # Minimum reads per ESV cluster (default 8)
+  min_cluster_size: 8
+
+  # Number of threads for VSEARCH
+  threads: 4
+
+# Classification: Taxonomic assignment with RDP Classifier
+classification:
+  # Marker gene: COI, 16S, 18S, 12S, ITS, rbcL, etc.
+  marker: "COI"
+
+  # Memory allocation for RDP classifier (GB)
+  memory_gb: 20
+
+  # Use custom-trained classifier (true/false)
+  use_custom_classifier: true
+
+  # Path to custom classifier (only if use_custom_classifier=true)
+  classifier_path: "classifiers/COI.properties"
+
+  # Built-in classifier choice (only if use_custom_classifier=false)
+  # Options: fungallsu, fungalits_unite, fungalits_warcup
+  builtin_classifier: "fungallsu"
+
+  # Confidence score threshold (0-1)
+  min_confidence: 0.8
+
+# Pseudogene Filtering: Remove potential pseudogenes
+pseudogene_filtering:
+  # Filtering method: "hmm" (HMM profile) or "orf" (ORF length)
+  method: "hmm"
+
+  # Grep filtering for taxonomy targeting
+  # Type: 1=simple (only taxon1), 2=compound (taxon1 AND taxon2)
+  grep_type: 1
+
+  # First grep pattern (e.g., '-e Arthropoda' to include specific taxon)
+  taxon1: "-e Arthropoda"
+
+  # Second grep pattern for compound search (e.g., '-v Chordata' to exclude)
+  # Only used if grep_type=2
+  taxon2: ""
+
+  # Path to HMM profile (only if method="hmm")
+  hmm_profile: "config/hmm/bold.hmm"
+
+  # Genetic code for ORF translation (1=standard, 2=vertebrate mtDNA, 5=invertebrate mtDNA)
+  genetic_code: 5
+
+  # ORF start codon: 0=ATG only, 1=ATG+alternative, 2=any sense codon
+  orf_start_codon: 2
+
+  # Minimum ORF length (nt, minimum 30)
+  min_orf_length: 30
+
+  # Ignore nested ORFs (true/false)
+  ignore_nested_orfs: true
+
+  # Strand to search: "both", "plus", "minus"
+  strand: "plus"
+
+# Stats: Generate statistics and reports
+stats:
+  # Include per-sample statistics (true/false)
+  per_sample: true
+
+  # Include combined statistics (true/false)
+  combined: true
+
+# ============================================================================
+# Output Options
+# ============================================================================
+output:
+  # Report type: 1=combined CSV, 2=separate files
+  # Use combined for <100 samples, separate for 100+ samples
+  report_type: 1
+
+  # Include intermediate files in output (true/false)
+  include_intermediate: false
+
+  # Compress output files (true/false)
+  compress_output: true
+
+  # Generate HTML report (true/false)
+  # Note: HTML report generation is not yet implemented
+  html_report: false

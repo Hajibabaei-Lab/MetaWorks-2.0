@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WorkflowType(str, Enum):
@@ -20,30 +20,71 @@ class RuntimeType(str, Enum):
 
 class RunSubmissionRequest(BaseModel):
     workflow: WorkflowType = Field(..., description="Workflow to run (esv|otu).")
-    run_name: str = Field(..., description="Friendly name for the run.")
-    runtime: RuntimeType = Field(default=RuntimeType.conda, description="Runtime executor (conda|docker|apptainer).")
+    run_name: str = Field(
+        ..., min_length=1, max_length=255, description="Friendly name for the run."
+    )
+    runtime: RuntimeType = Field(
+        default=RuntimeType.conda, description="Runtime executor (conda|docker|apptainer)."
+    )
     container_image: Optional[str] = Field(
-        default=None, description="Container URI or path (docker://image or .sif) for docker/apptainer runtimes."
+        default=None,
+        min_length=1,
+        description="Container URI or path (docker://image or .sif) for docker/apptainer runtimes.",
     )
     bind_paths: List[str] = Field(
         default_factory=list,
         description="Extra bind mounts (src:dest) when using docker/apptainer, run/input paths are auto-bound.",
     )
     cache_dir: Optional[str] = Field(
-        default=None, description="Container cache directory for docker/apptainer runtimes."
+        default=None,
+        description="Container cache directory for docker/apptainer runtimes.",
     )
     config_overrides: Dict[str, Any] = Field(
         default_factory=dict, description="Partial config overrides to merge with defaults."
     )
-    input_dir: str = Field(..., description="Path to input FASTQ folder on the control node or shared FS.")
-    samples_csv: Optional[str] = Field(
-        default=None, description="Optional samples CSV path if using sample_source=csv."
+    input_dir: str = Field(
+        ..., min_length=1, description="Path to input FASTQ folder on control node or shared FS."
     )
-    sample_source: str = Field(default="folder", description="folder|csv (matches Snakemake config).")
-    notes: Optional[str] = Field(default=None, description="Optional free-form notes for the run.")
-    cores: Optional[int] = Field(default=None, description="Override default cores for the scheduler job.")
-    mem_gb: Optional[int] = Field(default=None, description="Override default memory (GB) for the scheduler job.")
-    dry_run: bool = Field(default=False, description="If true, do not submit to scheduler—only stage config.")
+    samples_csv: Optional[str] = Field(
+        default=None,
+        description="Optional samples CSV path if using sample_source=csv.",
+    )
+    sample_source: str = Field(
+        default="folder",
+        pattern="^(folder|csv)$",
+        description="folder|csv (matches Snakemake config).",
+    )
+    notes: Optional[str] = Field(
+        default=None, max_length=2000, description="Optional free-form notes for the run."
+    )
+    cores: Optional[int] = Field(
+        default=None, ge=1, le=256, description="Override default cores for scheduler job (1-256)."
+    )
+    mem_gb: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=1024,
+        description="Override default memory (GB) for scheduler job (1-1024 GB).",
+    )
+    dry_run: bool = Field(
+        default=False, description="If true, do not submit to scheduler—only stage config."
+    )
+
+    @field_validator("input_dir")
+    @classmethod
+    def validate_input_dir(cls, v):
+        """Validate input_dir is a valid path."""
+        if not v or not v.strip():
+            raise ValueError("input_dir cannot be empty")
+        return v
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_container_image(cls, data):
+        """Ensure container_image is provided for container runtimes."""
+        if data.runtime in (RuntimeType.docker, RuntimeType.apptainer) and not data.container_image:
+            raise ValueError(f"container_image is required when using {data.runtime} runtime")
+        return data
 
 
 class RunStatus(BaseModel):

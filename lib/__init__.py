@@ -9,14 +9,6 @@ __version__ = "2.0.0"
 __author__ = "Hajibabaei Lab"
 
 # Make subpackages easily importable
-from . import preprocessing
-from . import taxonomy
-from . import pseudogene
-from . import utils
+from . import preprocessing, pseudogene, taxonomy, utils
 
-__all__ = [
-    "preprocessing",
-    "taxonomy", 
-    "pseudogene",
-    "utils"
-]
+__all__ = ["preprocessing", "taxonomy", "pseudogene", "utils"]

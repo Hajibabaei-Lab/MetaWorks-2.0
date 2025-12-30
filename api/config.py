@@ -66,7 +66,9 @@ class Settings(BaseSettings):
         default=False,
         description="If False, scheduler submit is dry-run and only records the command.",
     )
-    default_runtime: str = Field(default="conda", description="Default runtime if not provided (conda|docker|apptainer).")
+    default_runtime: str = Field(
+        default="conda", description="Default runtime if not provided (conda|docker|apptainer)."
+    )
     container_image: str = Field(
         default="docker://metaworks:latest",
         description="Default container URI or path for docker/apptainer runs.",

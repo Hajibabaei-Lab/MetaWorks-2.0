@@ -19,6 +19,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union
 
+from lib.exceptions import FileProcessingError, PipelineExecutionError
 from lib.utils.file_utils import ensure_directory
 
 
@@ -105,6 +106,7 @@ class PipelineRunInfo:
     @classmethod
     def from_json(cls, payload: Dict[str, Any]) -> "PipelineRunInfo":
         """Deserialize a run record that was saved to disk."""
+
         def _parse_time(value: Optional[str]) -> Optional[datetime]:
             if not value:
                 return None
@@ -263,11 +265,15 @@ class PipelineRunner:
                 )
         except FileNotFoundError as exc:
             run_info.status = RunStatus.FAILED
-            run_info.message = f"Snakemake executable not found: {exc}"
+            run_info.message = "Snakemake executable not found"
             run_info.finished_at = datetime.utcnow()
             run_info.exit_code = -1
             self._persist_metadata(run_info)
-            return
+            raise PipelineExecutionError(
+                f"Snakemake executable not found: {exc}",
+                stage="execution",
+                suggestion="Install Snakemake: conda install -c bioconda snakemake",
+            ) from exc
 
         run_info.exit_code = process.returncode
         run_info.finished_at = datetime.utcnow()
@@ -279,12 +285,28 @@ class PipelineRunner:
         self._persist_metadata(run_info)
 
     def _stage_config(self, run_dir: Path, request: PipelineRunRequest) -> Path:
-        """Copy the base config into the run directory."""
-        config_destination = run_dir / request.config.name
-        shutil.copy2(request.config, config_destination)
+        """Copy base config into the run directory."""
+        try:
+            config_destination = run_dir / request.config.name
+            shutil.copy2(request.config, config_destination)
+        except (FileNotFoundError, IOError) as exc:
+            raise FileProcessingError(
+                f"Failed to copy config file: {request.config}",
+                filepath=str(request.config),
+                suggestion="Check that config file exists and is readable",
+            ) from exc
+
         if request.config_overrides:
-            overrides_path = run_dir / "config_overrides.json"
-            overrides_path.write_text(json.dumps(request.config_overrides, indent=2))
+            try:
+                overrides_path = run_dir / "config_overrides.json"
+                overrides_path.write_text(json.dumps(request.config_overrides, indent=2))
+            except IOError as exc:
+                raise FileProcessingError(
+                    f"Failed to write config overrides: {overrides_path}",
+                    filepath=str(overrides_path),
+                    suggestion="Check write permissions in run directory",
+                ) from exc
+
         return config_destination
 
     def _stage_inputs(
@@ -298,16 +320,29 @@ class PipelineRunner:
             return staged_inputs
         inputs_dir = ensure_directory(run_dir / "inputs")
         for path in input_paths:
-            destination = inputs_dir / Path(path).name
-            shutil.copy2(path, destination)
-            staged_inputs.append(destination)
+            try:
+                destination = inputs_dir / Path(path).name
+                shutil.copy2(path, destination)
+                staged_inputs.append(destination)
+            except (FileNotFoundError, IOError) as exc:
+                raise FileProcessingError(
+                    f"Failed to stage input file: {path}",
+                    filepath=str(path),
+                    suggestion="Check that input file exists and is readable",
+                ) from exc
         return staged_inputs
 
     def _metadata_path(self, run_dir: Path) -> Path:
         return run_dir / self.METADATA_FILENAME
 
     def _persist_metadata(self, run_info: PipelineRunInfo) -> None:
-        """Write the metadata JSON file for a run."""
-        metadata_path = self._metadata_path(run_info.workdir)
-        metadata_path.write_text(json.dumps(run_info.to_json(), indent=2))
-
+        """Write metadata JSON file for a run."""
+        try:
+            metadata_path = self._metadata_path(run_info.workdir)
+            metadata_path.write_text(json.dumps(run_info.to_json(), indent=2))
+        except IOError as exc:
+            raise FileProcessingError(
+                f"Failed to write metadata file: {metadata_path}",
+                filepath=str(metadata_path),
+                suggestion="Check write permissions in run directory",
+            ) from exc
