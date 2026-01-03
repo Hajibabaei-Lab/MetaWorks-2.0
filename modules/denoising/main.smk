@@ -42,9 +42,9 @@ POOLING = config.get("pooling", "Yes")
 rule rename_fasta_headers:
     """Rename FASTA headers to replace hyphens with underscores"""
     input:
-        config["dir"] + "/{sample}.fasta.tmp"
+        config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp"
     output:
-        temp(config["dir"] + "/{sample}.tagged")
+        temp(config["pipeline"]["output_dir"] + "/{sample}.tagged")
     shell:
         "sed -e 's/-/_/g' {input} > {output}"
 
@@ -55,9 +55,9 @@ if POOLING == 'Yes':
     rule concatenate_samples:
         """Concatenate all samples for global analysis"""
         input:
-            expand(config["dir"] + "/{sample}.fasta.tmp", sample=SAMPLES_UNIQUE)
+            expand(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp", sample=SAMPLES_UNIQUE)
         output:
-            temp(config["dir"] + "/cat.fasta.tmp")
+            temp(config["pipeline"]["output_dir"] + "/cat.fasta.tmp")
         threads: 1
         resources:
             mem_mb = 2000,
@@ -68,18 +68,18 @@ if POOLING == 'Yes':
     rule rename_fasta_headers_pooled:
         """Rename FASTA headers for pooled data"""
         input:
-            config["dir"] + "/cat.fasta.tmp"
+            config["pipeline"]["output_dir"] + "/cat.fasta.tmp"
         output:
-            temp(config["dir"] + "/cat.fasta")
+            temp(config["pipeline"]["output_dir"] + "/cat.fasta")
         shell:
             "sed -e 's/-/_/g' {input} > {output}"
     
     rule compress_pooled_data:
         """Compress pooled FASTA data"""
         input:
-            config["dir"] + "/cat.fasta"
+            config["pipeline"]["output_dir"] + "/cat.fasta"
         output:
-            config["dir"] + "/cat.fasta.gz"
+            config["pipeline"]["output_dir"] + "/cat.fasta.gz"
         threads: 1
         resources:
             mem_mb = 1000,
@@ -90,30 +90,30 @@ if POOLING == 'Yes':
     rule dereplicate_pooled:
         """Dereplicate pooled sequences to identify unique sequences"""
         input:
-            config["dir"] + "/cat.fasta.gz"
+            config["pipeline"]["output_dir"] + "/cat.fasta.gz"
         output:
-            config["dir"] + "/cat.uniques"
+            config["pipeline"]["output_dir"] + "/cat.uniques"
         threads: 1
         resources:
             mem_mb = 4000,
             time_min = 30
         log:
-            config["dir"] + "/dereplication.log"
+            config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
     
     rule denoise_pooled:
         """Denoise sequences using UNOISE3 algorithm"""
         input:
-            config["dir"] + "/cat.uniques"
+            config["pipeline"]["output_dir"] + "/cat.uniques"
         output:
-            config["dir"] + "/cat.denoised"
+            config["pipeline"]["output_dir"] + "/cat.denoised"
         threads: 1
         resources:
             mem_mb = 4000,
             time_min = 60
         log:
-            config["dir"] + "/denoising.log"
+            config["pipeline"]["output_dir"] + "/denoising.log"
         params:
             minsize = VSEARCH_DENOISE_CONFIG.get("minsize", 8)
         shell:
@@ -122,31 +122,31 @@ if POOLING == 'Yes':
     rule chimera_removal_pooled:
         """Remove chimeric sequences using de novo chimera detection"""
         input:
-            config["dir"] + "/cat.denoised"
+            config["pipeline"]["output_dir"] + "/cat.denoised"
         output:
-            config["dir"] + "/cat.denoised.nonchimeras"
+            config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         threads: 1
         resources:
             mem_mb = 400,
             time_min = 45
         log:
-            config["dir"] + "/chimeraRemoval.log"
+            config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
             "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
     
     rule create_esv_table_pooled:
         """Create ESV table using exact sequence matching"""
         input:
-            vsearch_global = config["dir"] + "/cat.fasta.gz",
-            db = config["dir"] + "/cat.denoised.nonchimeras"
+            vsearch_global = config["pipeline"]["output_dir"] + "/cat.fasta.gz",
+            db = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output:
-            temp(config["dir"] + "/ESV.table.tmp")
+            temp(config["pipeline"]["output_dir"] + "/ESV.table.tmp")
         threads: VSEARCH_TABLE_CONFIG.get("t", 4)
         resources:
             mem_mb = 6000,
             time_min = 60
         log:
-            config["dir"] + "/table.log"
+            config["pipeline"]["output_dir"] + "/table.log"
         shell:
             "vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
 
@@ -156,9 +156,9 @@ else:
     rule dereplicate_per_sample:
         """Dereplicate sequences per sample"""
         input:
-            config["dir"] + "/{sample}.tagged"
+            config["pipeline"]["output_dir"] + "/{sample}.tagged"
         output:
-            temp(config["dir"] + "/{sample}.uniques.tmp")
+            temp(config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp")
         threads: 4
         resources:
             mem_mb = 2000,
@@ -169,15 +169,15 @@ else:
     rule denoise_per_sample:
         """Denoise sequences per sample using UNOISE3 algorithm"""
         input:
-            config["dir"] + "/{sample}.uniques.tmp"
+            config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp"
         output:
-            temp(config["dir"] + "/{sample}.denoised")
+            temp(config["pipeline"]["output_dir"] + "/{sample}.denoised")
         threads: 4
         resources:
             mem_mb = 2000,
             time_min = 30
         log:
-            config["dir"] + "/logs/{sample}.denoising.log"
+            config["pipeline"]["output_dir"] + "/logs/{sample}.denoising.log"
         params:
             minsize = VSEARCH_DENOISE_CONFIG.get("minsize", 8)
         shell:
@@ -186,9 +186,9 @@ else:
     rule concatenate_denoised_samples:
         """Concatenate all denoised samples"""
         input:
-            expand(config["dir"] + "/{sample}.denoised", sample=SAMPLES_UNIQUE)
+            expand(config["pipeline"]["output_dir"] + "/{sample}.denoised", sample=SAMPLES_UNIQUE)
         output:
-            config["dir"] + "/cat.denoised.tmp"
+            config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
         threads: 4
         resources:
             mem_mb = 2000,
@@ -199,24 +199,24 @@ else:
     rule dereplicate_combined:
         """Dereplicate combined denoised sequences"""
         input:
-            config["dir"] + "/cat.denoised.tmp"
+            config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
         output:
-            config["dir"] + "/cat.uniques"
+            config["pipeline"]["output_dir"] + "/cat.uniques"
         threads: 4
         resources:
             mem_mb = 4000,
             time_min = 30
         log:
-            config["dir"] + "/dereplication.log"
+            config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
     
     rule compress_uniques:
         """Compress dereplicated uniques"""
         input:
-            config["dir"] + "/cat.uniques"
+            config["pipeline"]["output_dir"] + "/cat.uniques"
         output:
-            config["dir"] + "/cat.uniques.gz"
+            config["pipeline"]["output_dir"] + "/cat.uniques.gz"
         threads: 1
         resources:
             mem_mb = 1000,
@@ -227,40 +227,40 @@ else:
     rule chimera_removal_per_sample:
         """Remove chimeric sequences from combined denoised data"""
         input:
-            config["dir"] + "/cat.uniques.gz"
+            config["pipeline"]["output_dir"] + "/cat.uniques.gz"
         output:
-            config["dir"] + "/cat.denoised.nonchimeras"
+            config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         threads: 4
         resources:
             mem_mb = 4000,
             time_min = 45
         log:
-            config["dir"] + "/chimeraRemoval.log"
+            config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
             "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
     
     rule create_esv_table_per_sample:
         """Create ESV table for each sample"""
         input:
-            vsearch_global = config["dir"] + "/{sample}.tagged",
-            db = config["dir"] + "/cat.denoised.nonchimeras"
+            vsearch_global = config["pipeline"]["output_dir"] + "/{sample}.tagged",
+            db = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output:
-            temp(config["dir"] + "/{sample}.esv.tmp")
+            temp(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp")
         threads: VSEARCH_TABLE_CONFIG.get("t", 4)
         resources:
             mem_mb = 2000,
             time_min = 30
         log:
-            config["dir"] + "/{sample}.table.log"
+            config["pipeline"]["output_dir"] + "/{sample}.table.log"
         shell:
             "vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
     
     rule merge_esv_tables:
         """Merge per-sample ESV tables into a single table"""
         input:
-            esv_tables = expand(config["dir"] + "/{sample}.esv.tmp", sample=SAMPLES_UNIQUE)
+            esv_tables = expand(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp", sample=SAMPLES_UNIQUE)
         output:
-            config["dir"] + "/ESV.table.tmp"
+            config["pipeline"]["output_dir"] + "/ESV.table.tmp"
         threads: 1
         resources:
             mem_mb = 2000,
@@ -272,10 +272,10 @@ else:
 checkpoint denoising_complete:
     """Signal that denoising and ESV table creation is complete"""
     input:
-        config["dir"] + "/ESV.table.tmp",
-        config["dir"] + "/cat.denoised.nonchimeras"
+        config["pipeline"]["output_dir"] + "/ESV.table.tmp",
+        config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
     output:
-        touch(config["dir"] + "/checkpoints/denoising_complete.done")
+        touch(config["pipeline"]["output_dir"] + "/checkpoints/denoising_complete.done")
     message:
         "Denoising complete for {0} samples (pooling: {1})".format(
             len(SAMPLES_UNIQUE), POOLING

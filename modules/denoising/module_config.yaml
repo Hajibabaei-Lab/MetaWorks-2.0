@@ -1,0 +1,84 @@
+# Denoising Module Configuration
+# DO NOT EDIT UNLESS YOU ARE A DEVELOPER
+# This file contains defaults and metadata for the denoising module
+
+module:
+  name: "denoising"
+  version: "2.0.0"
+  description: "Generate ESVs using VSEARCH with dereplication, denoising, and chimera removal"
+  author: "Hajibabaei Lab"
+  enabled_by_default: true
+
+# Default Parameters (can be overridden by user config)
+parameters:
+  vsearch_denoise:
+    pool_samples: true     # Pool all samples for denoising (true/false)
+    min_cluster_size: 8    # Minimum reads per ESV cluster (default 8)
+  
+  vsearch_table:
+    threads: 4             # Number of threads for table creation
+  
+  vsearch_chimera:
+    enabled: true          # Enable chimera detection/removal
+    method: "uchime_denovo"  # Chimera detection method
+  
+  defaults:
+    output_prefix: "esv"    # Prefix for output files
+    compression: true      # Compress output files
+
+# Input/Output File Templates
+files:
+  inputs:
+    - trimmed_reads: "{output_dir}/trimmed/{sample}.fasta"
+  
+  outputs:
+    - esv_table: "{output_dir}/ESV.table"
+    - esv_sequences: "{output_dir}/cat.denoised.nonchimeras"
+    - concatenated_fasta: "{output_dir}/cat.fasta.gz"
+    - dereplicated: "{output_dir}/cat.uniques"
+    - denoised_centroids: "{output_dir}/cat.denoised"
+
+# Required Software
+software:
+  conda:
+    - "vsearch>=2.15"
+    - "python>=3.8"
+  
+  external:
+    - "python_scripts/merge_esv_tables.py"
+
+# Validation Rules
+validation:
+  - parameter: "min_cluster_size"
+    type: "integer"
+    min: 1
+    max: 1000
+    description: "Minimum reads per ESV cluster"
+  
+  - parameter: "threads"
+    type: "integer"
+    min: 1
+    max: 32
+    description: "Number of threads for VSEARCH"
+
+# Resource Requirements
+resources:
+  default:
+    threads: 4
+    memory_mb: 8000
+    time_minutes: 120
+  
+  high_load:
+    threads: 8
+    memory_mb: 16000
+    time_minutes: 180
+
+# Module Dependencies
+depends_on:
+  - "trimming"
+
+# Checkpoints
+checkpoints:
+  - name: denoising_complete
+    trigger: "ESV generation complete"
+    output: "{output_dir}/checkpoints/denoising_complete.done"

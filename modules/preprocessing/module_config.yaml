@@ -1,0 +1,90 @@
+# Preprocessing Module Configuration
+# DO NOT EDIT UNLESS YOU ARE A DEVELOPER
+# This file contains defaults and metadata for the preprocessing module
+
+module:
+  name: "preprocessing"
+  version: "2.0.0"
+  description: "Preprocess raw reads (quality filtering, read merging) with SeqPrep"
+  author: "Hajibabaei Lab"
+  enabled_by_default: true
+
+# Default Parameters (can be overridden by user config)
+parameters:
+  seqprep:
+    quality_score: 13       # Phred quality score cutoff (0-40)
+    min_overlap: 25         # Minimum overlap length between reads (10-100 bp)
+    max_mismatch: 0.02      # Maximum fraction of mismatches in overlap (0.0-0.5)
+    min_match: 0.90         # Minimum fraction of matching overlap (0.0-1.0)
+  
+  defaults:
+    output_prefix: "preprocessed"  # Prefix for output files
+    compression: true              # Compress output files
+
+# Input/Output File Templates
+files:
+  inputs:
+    - reads: "{input_dir}/{sample}_R1.fastq.gz"
+    - reads: "{input_dir}/{sample}_R2.fastq.gz"
+  
+  outputs:
+    - merged: "{output_dir}/preprocessed/{sample}.merged.fastq.gz"
+    - merged_rc: "{output_dir}/preprocessed/{sample}.merged.rc.fastq.gz"
+    - stats: "{output_dir}/stats/{sample}.stats"
+
+# Required Software
+software:
+  conda:
+    - "seqprep>=1.3.2"
+    - "python>=3.8"
+  
+  external:
+    - "fastq_gz_stats"
+    - "seqkit"
+
+# Validation Rules
+validation:
+  - parameter: "quality_score"
+    type: "integer"
+    min: 0
+    max: 40
+    description: "Phred quality score cutoff (0-40)"
+  
+  - parameter: "min_overlap"
+    type: "integer"
+    min: 10
+    max: 100
+    description: "Minimum overlap length (10-100 bp)"
+  
+  - parameter: "max_mismatch"
+    type: "float"
+    min: 0.0
+    max: 0.5
+    description: "Maximum fraction of mismatches (0.0-0.5)"
+  
+  - parameter: "min_match"
+    type: "float"
+    min: 0.0
+    max: 1.0
+    description: "Minimum fraction of matching overlap (0.0-1.0)"
+
+# Resource Requirements
+resources:
+  default:
+    threads: 1
+    memory_mb: 2000
+    time_minutes: 30
+  
+  high_load:
+    threads: 2
+    memory_mb: 4000
+    time_minutes: 45
+
+# Module Dependencies
+depends_on: []
+
+# Checkpoints
+checkpoints:
+  - name: preprocessing_complete
+    trigger: "Read preprocessing complete"
+    output: "{output_dir}/checkpoints/preprocessing_complete.done"

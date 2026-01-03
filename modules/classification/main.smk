@@ -13,19 +13,22 @@ RDP_CONFIG = MODULE_CONFIG.get("rdp", config.get("RDP", {}))
 
 def rdp_options(config):
     """Generate RDP classifier options based on configuration"""
-    if config["RDP"]["custom"] == "yes":
-        return f"-t {config['RDP']['t']}"
-    elif config["RDP"]["custom"] == "no":
-        if config["marker"] == "16S":
-            return f"-c {config['RDP']['c']} -f {config['RDP']['f']}"
-        elif config["marker"] == "28S_fungi":
-            return f"-g {config['RDP']['g']}"
-        else:
-            print("ERROR: Indicate whether you are analyzing a prokaryote 16S or fungal ITS or 28S (LSU) marker in the config")
-            return ""
+    classification_config = config.get("modules", {}).get("classification", config.get("classification", {}))
+    
+    if classification_config.get("use_custom_classifier", False):
+        classifier_path = classification_config.get("classifier_path", "classifiers/COI.properties")
+        return f"-t {classifier_path}"
     else:
-        print("ERROR: Indicate whether you are working with a custom reference sequence database in the config")
-        return ""
+        marker = config.get("marker", classification_config.get("marker", "COI"))
+        builtin_classifier = classification_config.get("builtin_classifier", "fungallsu")
+        
+        if marker == "16S":
+            return f"-c {builtin_classifier}"
+        elif marker in ["ITS", "28S_fungi", "fungal_ITS"]:
+            return f"-g {builtin_classifier}"
+        else:
+            # For other markers, use default classifier
+            return f"-t {builtin_classifier}"
 
 # Input validation
 def validate_inputs():
@@ -35,13 +38,9 @@ def validate_inputs():
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
     
-    # Validate RDP custom option
-    if RDP_CONFIG.get("custom") not in ["yes", "no"]:
-        raise ValueError(f"RDP custom must be 'yes' or 'no', got: {RDP_CONFIG.get('custom')}")
-    
     # If using custom classifier, validate properties file exists
-    if RDP_CONFIG.get("custom") == "yes":
-        props_file = RDP_CONFIG.get("t", "path/to/rRNAClassifier.properties")
+    if RDP_CONFIG.get("use_custom_classifier", False):
+        props_file = RDP_CONFIG.get("classifier_path", "classifiers/COI.properties")
         if not os.path.exists(props_file):
             raise FileNotFoundError(f"RDP classifier properties file not found: {props_file}")
 
@@ -51,17 +50,17 @@ validate_inputs()
 rule taxonomic_assignment:
     """Perform taxonomic assignment using RDP Classifier with parallel processing"""
     input:
-        config["dir"] + "/cat.denoised.nonchimeras"
+        config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
     output:
-        config["dir"] + "/rdp.out.tmp"
+        config["pipeline"]["output_dir"] + "/rdp.out.tmp"
     threads: 4
     resources:
         mem_mb = 20000,
         time_min = 240
     log:
-        config["dir"] + "/logs/classification.log"
+        config["pipeline"]["output_dir"] + "/logs/classification.log"
     params:
-        memory = RDP_CONFIG.get("memory", "20g"),
+        memory = lambda wc: f"{config.get('modules', {}).get('classification', config.get('classification', {})).get('memory_gb', 20)}g",
         options = lambda wildcards: rdp_options(config)
     shell:
         """
@@ -78,12 +77,12 @@ rule taxonomic_assignment:
 checkpoint classification_complete:
     """Signal that taxonomic classification is complete"""
     input:
-        config["dir"] + "/rdp.out.tmp"
+        config["pipeline"]["output_dir"] + "/rdp.out.tmp"
     output:
-        touch(config["dir"] + "/checkpoints/classification_complete.done")
+        touch(config["pipeline"]["output_dir"] + "/checkpoints/classification_complete.done")
     message:
         "Taxonomic classification complete for {0} sequences".format(
-            count_sequences(config["dir"] + "/cat.denoised.nonchimeras")
+            count_sequences(config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras")
         )
 
 def count_sequences(fasta_file):

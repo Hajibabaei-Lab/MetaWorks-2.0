@@ -79,7 +79,7 @@ rule pair_reads:
     output:
         unpaired_r1 = temp("{sample}_R1.out"),
         unpaired_r2 = temp("{sample}_R2.out"),
-        paired = config["dir"] + "/paired/{sample}.fastq.gz"
+        paired = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
     params:
         q = SEQPREP_CONFIG.get("q", 13),
         m = SEQPREP_CONFIG.get("m", 0.02),
@@ -90,9 +90,9 @@ rule pair_reads:
         mem_mb = 2000,
         time_min = 30
     log:
-        config["dir"] + "/logs/pairing/{sample}.log"
+        config["pipeline"]["output_dir"] + "/logs/pairing/{sample}.log"
     benchmark:
-        config["dir"] + "/benchmarks/pairing/{sample}.txt"
+        config["pipeline"]["output_dir"] + "/benchmarks/pairing/{sample}.txt"
     shell:
         """
         SeqPrep \
@@ -112,8 +112,8 @@ rule pair_reads:
 checkpoint pairing_complete:
     """Signal that all samples have been paired"""
     input:
-        expand(config["dir"] + "/paired/{sample}.fastq.gz", sample=SAMPLES_UNIQUE)
+        expand(config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz", sample=SAMPLES_UNIQUE)
     output:
-        touch(config["dir"] + "/checkpoints/pairing_complete.done")
+        touch(config["pipeline"]["output_dir"] + "/checkpoints/pairing_complete.done")
     message:
         "Read pairing complete for all {0} samples".format(len(SAMPLES_UNIQUE))

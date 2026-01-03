@@ -41,9 +41,9 @@ rule trim_linked_adapters:
     """Trim linked adapters from paired reads using Cutadapt"""
     input:
         adapters = CUTADAPT_CONFIG.get("fasta"),
-        paired = config["dir"] + "/paired/{sample}.fastq.gz"
+        paired = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
     output:
-        config["dir"] + "/trimmed/{sample}.fasta"
+        config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
     params:
         m = CUTADAPT_CONFIG.get("m", 150),
         q = CUTADAPT_CONFIG.get("q", "20,20"),
@@ -56,9 +56,9 @@ rule trim_linked_adapters:
         mem_mb = 4000,
         time_min = 60
     log:
-        config["dir"] + "/logs/trimming/{sample}.log"
+        config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.log"
     benchmark:
-        config["dir"] + "/benchmarks/trimming/{sample}.txt"
+        config["pipeline"]["output_dir"] + "/benchmarks/trimming/{sample}.txt"
     shell:
         """
         cutadapt \
@@ -78,15 +78,15 @@ rule trim_linked_adapters:
 rule gzip_trimmed_fasta:
     """Compress trimmed FASTA files"""
     input:
-        config["dir"] + "/trimmed/{sample}.fasta"
+        config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
     output:
-        config["dir"] + "/trimmed/{sample}.fasta.gz"
+        config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
     threads: 1
     resources:
         mem_mb = 1000,
         time_min = 10
     log:
-        config["dir"] + "/logs/trimming/{sample}.gzip.log"
+        config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.gzip.log"
     shell:
         "gzip -c {input} > {output} 2> {log}"
 
@@ -94,8 +94,8 @@ rule gzip_trimmed_fasta:
 checkpoint trimming_complete:
     """Signal that all samples have been trimmed"""
     input:
-        expand(config["dir"] + "/trimmed/{sample}.fasta.gz", sample=SAMPLES_UNIQUE)
+        expand(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz", sample=SAMPLES_UNIQUE)
     output:
-        touch(config["dir"] + "/checkpoints/trimming_complete.done")
+        touch(config["pipeline"]["output_dir"] + "/checkpoints/trimming_complete.done")
     message:
         "Adapter trimming complete for all {0} samples".format(len(SAMPLES_UNIQUE))

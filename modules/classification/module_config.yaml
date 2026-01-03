@@ -1,0 +1,102 @@
+# Classification Module Configuration
+# DO NOT EDIT UNLESS YOU ARE A DEVELOPER
+# This file contains defaults and metadata for the classification module
+
+module:
+  name: "classification"
+  version: "2.0.0"
+  description: "Taxonomic assignment of ESVs using RDP Classifier with parallel processing"
+  author: "Hajibabaei Lab"
+  enabled_by_default: true
+
+# Default Parameters (can be overridden by user config)
+parameters:
+  rdp:
+    marker: "COI"                     # Marker gene (COI, 16S, 18S, 12S, ITS, rbcL, etc.)
+    memory_gb: 20                    # Memory allocation for RDP classifier (GB)
+    use_custom_classifier: true      # Use custom-trained classifier (true/false)
+    classifier_path: null            # Path to custom classifier properties file
+    min_confidence: 0.8              # Minimum confidence score (0-1)
+  
+  rdp_builtin:
+    builtin_classifier: "fungallsu"  # Built-in classifier choice (only if custom=false)
+    # Options: fungallsu, fungalits_unite, fungalits_warcup
+  
+  parallel:
+    threads: 4                        # Number of threads for parallel processing
+    chunk_size: 10000                 # Sequences per chunk
+  
+  defaults:
+    output_prefix: "rdp"              # Prefix for output files
+
+# Input/Output File Templates
+files:
+  inputs:
+    - esv_sequences: "{output_dir}/cat.denoised.nonchimeras"
+    - classifier: "{classifier_path}"
+  
+  outputs:
+    - rdp_output: "{output_dir}/rdp.out"
+    - taxonomy_tsv: "{output_dir}/taxonomy.tsv"
+    - taxonomy_csv: "{output_dir}/taxonomy.csv"
+    - chunk_files: "{output_dir}/rdp_chunks/chunk_*.fasta"
+
+# Required Software
+software:
+  conda:
+    - "rdp_classifier>=2.12"
+    - "python>=3.8"
+    - "biopython>=1.70"
+  
+  external:
+    - "python_scripts/parallel_rdp.py"
+    - "python_scripts/rdp_tsv_to_csv.py"
+
+# Validation Rules
+validation:
+  - parameter: "marker"
+    type: "string"
+    allowed: ["COI", "16S", "16S_vertebrate", "18S_eukaryota", "18S_diatom", 
+               "12S_fish", "12S_vertebrate", "ITS_fungi", "28S_fungi", 
+               "rbcL_eukaryota", "rbcL_diatom", "rbcL_landPlant", "ITS_plants"]
+    description: "Marker gene type"
+  
+  - parameter: "memory_gb"
+    type: "integer"
+    min: 1
+    max: 100
+    description: "Memory allocation for RDP classifier (GB)"
+  
+  - parameter: "min_confidence"
+    type: "float"
+    min: 0.0
+    max: 1.0
+    description: "Minimum confidence score threshold"
+  
+  - parameter: "threads"
+    type: "integer"
+    min: 1
+    max: 32
+    description: "Number of threads for parallel processing"
+
+# Resource Requirements
+resources:
+  default:
+    threads: 4
+    memory_mb: 20000
+    time_minutes: 240
+  
+  high_load:
+    threads: 8
+    memory_mb: 40000
+    time_minutes: 360
+
+# Module Dependencies
+depends_on:
+  - "denoising"
+
+# Checkpoints
+checkpoints:
+  - name: classification_complete
+    trigger: "Taxonomic assignment complete"
+    output: "{output_dir}/checkpoints/classification_complete.done"

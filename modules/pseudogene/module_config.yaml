@@ -1,0 +1,108 @@
+# Pseudogene Filtering Module Configuration
+# DO NOT EDIT UNLESS YOU ARE A DEVELOPER
+# This file contains defaults and metadata for the pseudogene filtering module
+
+module:
+  name: "pseudogene"
+  version: "2.0.0"
+  description: "Filter putative pseudogenes using ORF analysis (longest ORF or HMM-based methods)"
+  author: "Hajibabaei Lab"
+  enabled_by_default: false
+
+# Default Parameters (can be overridden by user config)
+parameters:
+  pseudogene:
+    enabled: false              # Enable pseudogene filtering (true/false)
+    method: "hmm"               # Filtering method: "hmm" or "orf"
+    target_taxon: "Arthropoda"  # Target taxonomic group (NCBI taxonomy)
+  
+  hmm:
+    profile_path: "config/hmm/bold.hmm"  # Path to HMM profile
+    min_score: 0.0              # Minimum HMM score threshold
+  
+  orf:
+    genetic_code: 5             # Genetic code (1=standard, 2=vertebrate mtDNA, 5=invertebrate mtDNA)
+    start_codon: 2              # ORF start codon: 0=ATG only, 1=ATG+alt, 2=any sense
+    min_length: 30              # Minimum ORF length (nt, minimum 30)
+    ignore_nested: true         # Ignore nested ORFs (true/false)
+    strand: "plus"              # Strand to search: "both", "plus", "minus"
+  
+  grep:
+    type: 1                     # Grep search type: 1=simple, 2=compound
+    taxon1: "-e Arthropoda"     # First taxonomic filter
+    taxon2: "-v Chordata"       # Second taxonomic filter (for type=2)
+  
+  defaults:
+    output_prefix: "filtered"    # Prefix for output files
+
+# Input/Output File Templates
+files:
+  inputs:
+    - rdp_output: "{output_dir}/rdp.out"
+    - esv_table: "{output_dir}/ESV.table"
+    - esv_sequences: "{output_dir}/cat.denoised.nonchimeras"
+  
+  outputs:
+    - filtered_taxonomy: "{output_dir}/taxonomy.csv"
+    - filtered_esv_table: "{output_dir}/ESV.table"
+    - taxon_subset: "{output_dir}/taxon.zotus"
+    - orfs_nt: "{output_dir}/orfs.fasta.nt.hmm"
+    - orfs_aa: "{output_dir}/orfs.fasta.aa.hmm"
+    - longest_orfs: "{output_dir}/longest.orfs.fasta"
+
+# Required Software
+software:
+  conda:
+    - "hmmer>=3.0"
+    - "orf-finder"  # ORFfinder
+    - "python>=3.8"
+  
+  external:
+    - "python_scripts/get_taxon_only.py"
+    - "python_scripts/filter_rdp_taxonomy.py"
+    - "python_scripts/filter_ESV_table.py"
+    - "python_scripts/parse_orfs3.py"
+    - "python_scripts/parse_orfs4.py"
+    - "python_scripts/filter_rdp.py"
+    - "python_scripts/add_seqs_to_tax4.py"
+
+# Validation Rules
+validation:
+  - parameter: "genetic_code"
+    type: "integer"
+    allowed: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33]
+    description: "NCBI genetic code table number"
+  
+  - parameter: "min_length"
+    type: "integer"
+    min: 30
+    max: 10000
+    description: "Minimum ORF length (nt)"
+  
+  - parameter: "method"
+    type: "string"
+    allowed: ["hmm", "orf"]
+    description: "Pseudogene filtering method"
+
+# Resource Requirements
+resources:
+  default:
+    threads: 4
+    memory_mb: 8000
+    time_minutes: 180
+  
+  high_load:
+    threads: 8
+    memory_mb: 16000
+    time_minutes: 270
+
+# Module Dependencies
+depends_on:
+  - "classification"
+  - "denoising"
+
+# Checkpoints
+checkpoints:
+  - name: pseudogene_complete
+    trigger: "Pseudogene filtering complete"
+    output: "{output_dir}/checkpoints/pseudogene_complete.done"
