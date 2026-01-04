@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-import sys
-import os
 import gzip
-
+import os
+import sys
 
 filename = sys.argv[1]
 

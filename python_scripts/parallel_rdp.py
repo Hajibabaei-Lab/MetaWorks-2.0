@@ -2,13 +2,15 @@
 # Alex Song, July 2025
 # Used to run the rdp classifer in parallel
 import argparse
+import concurrent.futures
 import math
 import os
+import shutil
 import subprocess
 import tempfile
-import shutil
-import concurrent.futures
+
 from Bio import SeqIO
+
 
 def split_fasta(input_file, num_chunks, output_prefix):
     """

@@ -1,8 +1,9 @@
 # Teresita M. Porter, May 5, 2021
 
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord

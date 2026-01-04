@@ -2,9 +2,10 @@
 # first arg is for rdp.out.tmp filename
 # second arg is config["marker"] to pick right set of headers
 
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
 from Bio import SeqIO
 
 # read in rdp.out.tmp

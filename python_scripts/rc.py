@@ -1,8 +1,9 @@
 # Teresita M. Porter, May 6/21
 
-from Bio import SeqIO
 import gzip
 import sys
+
+from Bio import SeqIO
 
 inputfile = sys.argv[1]
 outputfile = sys.argv[2]
