@@ -218,7 +218,9 @@ class ClassificationConfig(BaseModel):
 
 class PseudogeneConfig(BaseModel):
     method: str = Field(default="hmm", description="Filtering method")
-    grep_type: int = Field(default=1, ge=1, le=2, description="Grep search type: 1=simple, 2=compound")
+    grep_type: int = Field(
+        default=1, ge=1, le=2, description="Grep search type: 1=simple, 2=compound"
+    )
     taxon1: str = Field(default="-e Arthropoda", description="First grep pattern")
     taxon2: str = Field(default="", description="Second grep pattern (only for compound search)")
     hmm_profile: str = Field(default="config/hmm/bold.hmm")
