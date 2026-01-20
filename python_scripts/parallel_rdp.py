@@ -5,6 +5,7 @@ import argparse
 import concurrent.futures
 import math
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -54,15 +55,17 @@ def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43
         rdp_classifier <memory_flag> classify <options> -o <result_file> <chunk_file>
     A timeout (in seconds) is applied to prevent hanging.
     """
-    cmd = f"rdp_classifier -Xmx{memory_flag} classify {options} -o {result_file} {chunk_file}"
-    print(f"Running command: {cmd}")
+    cmd = (
+        ["rdp_classifier", f"-Xmx{memory_flag}", "classify"]
+        + shlex.split(options)
+        + ["-o", result_file, chunk_file]
+    )
+    print(f"Running command: {' '.join(cmd)}")
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
         if result.returncode != 0:
             print(f"Error processing {chunk_file}:\n{result.stderr}")
-            raise subprocess.CalledProcessError(result.returncode, cmd)
+            raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
     except subprocess.TimeoutExpired:
         print(f"Command timed out for {chunk_file}")
         raise

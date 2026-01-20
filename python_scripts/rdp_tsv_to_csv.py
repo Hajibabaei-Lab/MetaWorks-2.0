@@ -34,6 +34,3 @@ elif marker == tax3_abund9:
 
 	df.columns = ['GlobalESV','Strand','Root','RootRank','rBP','Domain','DomainRank','dBP','Kingdom','KingdomRank','kBP','Phylum','PhylumRank','pBP','Class','ClassRank','cBP','Order','OrderRank','oBP','Family','FamilyRank','fBP','Genus','GenusRank','gBP']
 	print(df.to_csv(index=False, header=True))
-
-
-

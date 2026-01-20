@@ -43,6 +43,3 @@ elif marker == 'ITS_fungi':
 
 	df_filtered.columns = ['GlobalESV','Strand','Root','RootRank','rBP','Kingdom','KingdomRank','kBP','Phylum','PhylumRank','pBP','Class','ClassRank','cBP','Order','OrderRank','oBP','Family','FamilyRank','fBP','Genus','GenusRank','gBP','Species','SpeciesRank','sBP']
 	print(df_filtered.to_csv(index=False, header=True))
-
-
-

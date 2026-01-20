@@ -30,9 +30,9 @@ def validate_arguments():
             suggestion="Usage: python merge_esv_tables.py <esv_table1.tsv> <esv_table2.tsv> ...",
             details=f"Expected at least 1 argument, got {len(sys.argv) - 1}"
         )
-    
+
     table_paths = [Path(f) for f in sys.argv[1:]]
-    
+
     for table_path in table_paths:
         if not table_path.exists():
             raise FileProcessingError(
@@ -40,7 +40,7 @@ def validate_arguments():
                 filepath=str(table_path),
                 suggestion="Check that ESV table file exists and is readable"
             )
-    
+
     return table_paths
 
 
@@ -54,7 +54,7 @@ def main():
     except FileProcessingError as exc:
         print(f"File Error: {exc.message}", file=sys.stderr)
         sys.exit(1)
-    
+
     # Read all ESV tables
     tables = []
     for table_path in table_paths:
@@ -79,13 +79,13 @@ def main():
                 filepath=str(table_path),
                 suggestion="Check file permissions and format"
             ) from exc
-    
+
     if not tables:
         raise FileProcessingError(
             "No valid ESV tables to merge",
             suggestion="Check that input files are valid ESV tables"
         )
-    
+
     # Merge tables along columns, fill NA with 0, convert to int
     try:
         merged = pd.concat(tables, axis=1).fillna(0).astype(int)
@@ -95,7 +95,7 @@ def main():
             suggestion="Ensure tables have compatible formats and indices",
             details=str(exc)
         ) from exc
-    
+
     # Output merged table
     merged.to_csv(sys.stdout, sep='\t')
 

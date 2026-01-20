@@ -8,7 +8,7 @@ output_file = sys.argv[2]
 with open(input_file, 'r') as f:
     lines = [line.rstrip("\n") for line in f]
 
-# Data structures: 
+# Data structures:
 # nt_length: { otu: { orf: length, ... }, ... }
 # nt_seq: { otu: { orf: sequence, ... }, ... }
 nt_length = {}

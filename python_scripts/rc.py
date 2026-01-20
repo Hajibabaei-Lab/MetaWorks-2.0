@@ -19,4 +19,3 @@ for read in fq:
 
 handle_in.close()
 handle_out.close()
-

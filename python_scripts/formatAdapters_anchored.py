@@ -43,9 +43,8 @@ df['LinkedAdapters'] = df['LinkedAdapters'].map('^{}$'.format)
 record_list=[]
 with open(file_out, 'w') as f_out:
 	for index, row in df.iterrows():
-		record = SeqRecord(Seq(df['LinkedAdapters'].iloc[index]), 
+		record = SeqRecord(Seq(df['LinkedAdapters'].iloc[index]),
 		description = "",
 		id=df['SampleIDamplicon'].iloc[index])
 		record_list.append(record)
 	SeqIO.write(record_list, f_out, 'fasta')
-
