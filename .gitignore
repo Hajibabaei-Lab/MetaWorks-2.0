@@ -44,5 +44,10 @@ Thumbs.db
 # Build artifacts
 build/
 dist/
+runtime/
 *.egg-info/
 .eggs/
+
+# Still in devleopment
+ui/
+docker-compose.yml
