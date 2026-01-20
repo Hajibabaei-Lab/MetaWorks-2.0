@@ -4,7 +4,7 @@ A flexible, web-based control node for managing bioinformatics pipeline runs (ES
 
 ## Features
 
-- **Modern Web UI**: Vue 3 + Vite based interface with real-time updates
+- **Modern Web UI (work in progress) **: Vue 3 + Vite based interface with real-time updates
 - **Multi-Environment Support**: Run locally, on servers, or on HPC clusters
 - **Flexible Runtimes**: Conda, Docker, and Apptainer (Singularity) support
 - **Workflow Presets**: Pre-configured templates for COI, 16S, and custom analyses
