@@ -46,7 +46,7 @@ See `modules/module_template.yaml` for the complete schema.
    ```python
    # Good
    output: "{dir}/processed/{sample}.fastq"
-   
+
    # Bad
    output: "COI/processed/{sample}.fastq"
    ```
@@ -137,10 +137,10 @@ import sys
 
 class MyProcessor:
     """Processor class with clear purpose"""
-    
+
     def __init__(self, filepath: Union[str, Path]):
         self.filepath = Path(filepath)
-    
+
     def process(self) -> Dict:
         """Process data and return results"""
         pass
@@ -149,7 +149,7 @@ def main():
     """CLI interface"""
     if len(sys.argv) < 2:
         sys.exit("Usage: ...")
-    
+
     # Implementation
     pass
 
