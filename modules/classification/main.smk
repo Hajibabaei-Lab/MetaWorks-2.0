@@ -14,14 +14,14 @@ RDP_CONFIG = MODULE_CONFIG.get("rdp", config.get("RDP", {}))
 def rdp_options(config):
     """Generate RDP classifier options based on configuration"""
     classification_config = config.get("modules", {}).get("classification", config.get("classification", {}))
-    
+
     if classification_config.get("use_custom_classifier", False):
         classifier_path = classification_config.get("classifier_path", "classifiers/COI.properties")
         return f"-t {classifier_path}"
     else:
         marker = config.get("marker", classification_config.get("marker", "COI"))
         builtin_classifier = classification_config.get("builtin_classifier", "fungallsu")
-        
+
         if marker == "16S":
             return f"-c {builtin_classifier}"
         elif marker in ["ITS", "28S_fungi", "fungal_ITS"]:
@@ -37,7 +37,7 @@ def validate_inputs():
     for req in required:
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
-    
+
     # If using custom classifier, validate properties file exists
     if RDP_CONFIG.get("use_custom_classifier", False):
         props_file = RDP_CONFIG.get("classifier_path", "classifiers/COI.properties")

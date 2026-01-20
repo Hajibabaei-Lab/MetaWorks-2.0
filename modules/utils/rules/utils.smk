@@ -37,16 +37,28 @@ OUTPUT_DIR = config["pipeline"]["output_dir"]
 
 # RDP classifier options function
 def rdp_options(config):
-    """Generate RDP classifier options based on new config structure."""
-    if config["classification"]["use_custom_classifier"]:
-        return f"-t {config['classification']['classifier_path']}"
+    """Generate RDP classifier options based on config structure."""
+    classification = config.get("classification", {}) if isinstance(config, dict) else {}
+    rdp_cfg = classification.get("rdp", {}) if isinstance(classification.get("rdp", {}), dict) else {}
+
+    # Backward compatibility: allow legacy keys at classification.* level
+    use_custom = rdp_cfg.get("use_custom_classifier", classification.get("use_custom_classifier", True))
+    classifier_path = rdp_cfg.get("classifier_path", classification.get("classifier_path"))
+    builtin_classifier = rdp_cfg.get("builtin_classifier", classification.get("builtin_classifier", "fungallsu"))
+
+    if use_custom:
+        if not classifier_path:
+            raise ValueError(
+                "classification.rdp.classifier_path is required when using a custom RDP classifier"
+            )
+        return f"-t {classifier_path}"
     else:
         # Using built-in classifier
-        if config["classification"]["builtin_classifier"] == "fungallsu":
+        if builtin_classifier == "fungallsu":
             return "-g fungallsu"
-        elif config["classification"]["builtin_classifier"] == "fungalits_unite":
+        elif builtin_classifier == "fungalits_unite":
             return "-g fungalits_unite"
-        elif config["classification"]["builtin_classifier"] == "fungalits_warcup":
+        elif builtin_classifier == "fungalits_warcup":
             return "-g fungalits_warcup"
         else:
             print("ERROR: Unknown builtin_classifier specified")

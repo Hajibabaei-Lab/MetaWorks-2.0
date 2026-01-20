@@ -6,23 +6,23 @@ module:
   version: "2.0.0"
   description: "Taxonomic assignment of ESVs using RDP Classifier with parallel processing"
   author: "Hajibabaei Lab"
-  
+
 inputs:
   required:
     - dir: "Output directory for results"
     - cat.denoised.nonchimeras: "Denoised sequences from denoising module"
-  
+
   optional:
     - marker: "Marker gene being analyzed (for RDP options)"
 
 outputs:
   primary:
     - rdp_output: "{dir}/rdp.out.tmp"
-  
+
   intermediate:
     - chunk_files: "temp({dir}/rdp_chunks/chunk_*.fasta)"
     - result_files: "temp({dir}/rdp_chunks/chunk_*.result)"
-  
+
   logs:
     - classification_log: "{dir}/logs/classification.log"
 
@@ -36,10 +36,10 @@ dependencies:
     - "rdp_classifier>=2.12"
     - "python>=3.8"
     - "biopython>=1.70"
-  
+
   scripts:
     - "python_scripts/parallel_rdp.py"
-  
+
   modules:
     - "denoising"
 

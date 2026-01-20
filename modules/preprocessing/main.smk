@@ -21,15 +21,15 @@ def validate_inputs():
     for req in required:
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
-    
+
     # Validate sample_source value
     if config["sample_source"] not in ["folder", "csv"]:
         raise ValueError("sample_source must be 'folder' or 'csv'")
-    
+
     # Check FASTQ directory exists
     if not os.path.exists(config["fastq_dir"]):
         raise FileNotFoundError(f"FASTQ directory not found: {config['fastq_dir']}")
-    
+
     # If using CSV, check it exists
     if config["sample_source"] == "csv":
         if "samples_csv" not in config:
@@ -63,7 +63,7 @@ elif config["sample_source"] == "folder":
     FASTQ_FOLDER = config["fastq_dir"]
     samples = glob.glob(os.path.join(FASTQ_FOLDER, "*_R1_001.fastq.gz"))
     SAMPLES_UNIQUE = [extract_sample_name_from_file(f) for f in samples]
-    
+
     if not SAMPLES_UNIQUE:
         raise ValueError(f"No FASTQ files found in {FASTQ_FOLDER} matching pattern *_R1_001.fastq.gz")
 

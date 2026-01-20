@@ -19,12 +19,12 @@ def validate_inputs():
     for req in required:
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
-    
+
     # Validate pooling value
     pooling = config.get("pooling", "Yes")
     if pooling not in ["Yes", "No"]:
         raise ValueError(f"pooling must be 'Yes' or 'No', got: {pooling}")
-    
+
     # Validate minsize parameter
     minsize = VSEARCH_DENOISE_CONFIG.get("minsize", 8)
     if minsize <= 0:
@@ -51,7 +51,7 @@ rule rename_fasta_headers:
 # Conditional rules based on pooling option
 if POOLING == 'Yes':
     # Global pooling path - concatenate all samples first
-    
+
     rule concatenate_samples:
         """Concatenate all samples for global analysis"""
         input:
@@ -64,7 +64,7 @@ if POOLING == 'Yes':
             time_min = 10
         shell:
             "cat {input} > {output}"
-    
+
     rule rename_fasta_headers_pooled:
         """Rename FASTA headers for pooled data"""
         input:
@@ -73,7 +73,7 @@ if POOLING == 'Yes':
             temp(config["pipeline"]["output_dir"] + "/cat.fasta")
         shell:
             "sed -e 's/-/_/g' {input} > {output}"
-    
+
     rule compress_pooled_data:
         """Compress pooled FASTA data"""
         input:
@@ -86,7 +86,7 @@ if POOLING == 'Yes':
             time_min = 5
         shell:
             "gzip -c {input} > {output}"
-    
+
     rule dereplicate_pooled:
         """Dereplicate pooled sequences to identify unique sequences"""
         input:
@@ -101,7 +101,7 @@ if POOLING == 'Yes':
             config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
-    
+
     rule denoise_pooled:
         """Denoise sequences using UNOISE3 algorithm"""
         input:
@@ -118,7 +118,7 @@ if POOLING == 'Yes':
             minsize = VSEARCH_DENOISE_CONFIG.get("minsize", 8)
         shell:
             "vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
-    
+
     rule chimera_removal_pooled:
         """Remove chimeric sequences using de novo chimera detection"""
         input:
@@ -133,7 +133,7 @@ if POOLING == 'Yes':
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
             "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
-    
+
     rule create_esv_table_pooled:
         """Create ESV table using exact sequence matching"""
         input:
@@ -152,7 +152,7 @@ if POOLING == 'Yes':
 
 else:
     # Per-sample processing path - process each sample separately then combine
-    
+
     rule dereplicate_per_sample:
         """Dereplicate sequences per sample"""
         input:
@@ -165,7 +165,7 @@ else:
             time_min = 20
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout"
-    
+
     rule denoise_per_sample:
         """Denoise sequences per sample using UNOISE3 algorithm"""
         input:
@@ -182,7 +182,7 @@ else:
             minsize = VSEARCH_DENOISE_CONFIG.get("minsize", 8)
         shell:
             "vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
-    
+
     rule concatenate_denoised_samples:
         """Concatenate all denoised samples"""
         input:
@@ -195,7 +195,7 @@ else:
             time_min = 10
         shell:
             "cat {input} > {output}"
-    
+
     rule dereplicate_combined:
         """Dereplicate combined denoised sequences"""
         input:
@@ -210,7 +210,7 @@ else:
             config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
-    
+
     rule compress_uniques:
         """Compress dereplicated uniques"""
         input:
@@ -223,7 +223,7 @@ else:
             time_min = 5
         shell:
             "gzip -c {input} > {output}"
-    
+
     rule chimera_removal_per_sample:
         """Remove chimeric sequences from combined denoised data"""
         input:
@@ -238,7 +238,7 @@ else:
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
             "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
-    
+
     rule create_esv_table_per_sample:
         """Create ESV table for each sample"""
         input:
@@ -254,7 +254,7 @@ else:
             config["pipeline"]["output_dir"] + "/{sample}.table.log"
         shell:
             "vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
-    
+
     rule merge_esv_tables:
         """Merge per-sample ESV tables into a single table"""
         input:

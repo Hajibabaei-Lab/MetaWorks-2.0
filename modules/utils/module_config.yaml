@@ -15,11 +15,11 @@ parameters:
     combined_report: true     # Generate combined report (true/false)
     include_intermediate: false  # Include intermediate files in output (true/false)
     cleanup_temp: true        # Clean up temporary files (true/false)
-  
+
   output:
     compress: true            # Compress output files (true/false)
     format: "csv"            # Output format: "csv", "tsv", "json"
-  
+
   defaults:
     output_prefix: "results"  # Prefix for output files
 
@@ -30,7 +30,7 @@ files:
     - taxonomy: "{output_dir}/taxonomy.csv"
     - sequences: "{output_dir}/cat.denoised.nonchimeras"
     - stats: "{output_dir}/stats/*.csv"
-  
+
   outputs:
     - results_csv: "{output_dir}/results.csv"
     - results_summary: "{output_dir}/results_summary.txt"
@@ -41,7 +41,7 @@ software:
   conda:
     - "python>=3.8"
     - "biopython>=1.70"
-  
+
   external: []
 
 # Validation Rules
@@ -57,7 +57,7 @@ resources:
     threads: 1
     memory_mb: 2000
     time_minutes: 30
-  
+
   high_load:
     threads: 2
     memory_mb: 4000

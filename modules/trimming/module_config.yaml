@@ -18,7 +18,7 @@ parameters:
     min_adapter_overlap: 3     # Minimum adapter overlap (bp)
     max_n_bases: 3             # Maximum number of N's allowed
     enable_rc: false           # Enable reverse complement mode (true/false)
-  
+
   defaults:
     output_prefix: "trimmed"   # Prefix for output files
     compression: true          # Compress output files
@@ -28,7 +28,7 @@ files:
   inputs:
     - merged_reads: "{output_dir}/preprocessed/{sample}.merged.fastq.gz"
     - adapter_file: "{adapters_path}"
-  
+
   outputs:
     - trimmed: "{output_dir}/trimmed/{sample}.fasta.gz"
     - trimmed_uncompressed: "{output_dir}/trimmed/{sample}.fasta"
@@ -38,7 +38,7 @@ software:
   conda:
     - "cutadapt>=4.0"
     - "python>=3.8"
-  
+
   external: []
 
 # Validation Rules
@@ -48,19 +48,19 @@ validation:
     min: 10
     max: 10000
     description: "Minimum sequence length after trimming (bp)"
-  
+
   - parameter: "error_rate"
     type: "float"
     min: 0.0
     max: 1.0
     description: "Maximum allowed error rate (0.0-1.0)"
-  
+
   - parameter: "min_adapter_overlap"
     type: "integer"
     min: 1
     max: 50
     description: "Minimum adapter overlap (bp)"
-  
+
   - parameter: "max_n_bases"
     type: "integer"
     min: 0
@@ -73,7 +73,7 @@ resources:
     threads: 1
     memory_mb: 4000
     time_minutes: 60
-  
+
   high_load:
     threads: 2
     memory_mb: 8000

@@ -6,22 +6,22 @@ module:
   version: "2.0.0"
   description: "Trim linked adapters from paired reads using Cutadapt"
   author: "Hajibabaei Lab"
-  
+
 inputs:
   required:
     - dir: "Output directory for results"
     - adapter_file: "FASTA file with linked adapter sequences"
-  
+
   optional:
     - SAMPLES_UNIQUE: "List of samples to process (from preprocessing module)"
 
 outputs:
   primary:
     - trimmed_fasta: "{dir}/trimmed/{sample}.fasta.gz"
-  
+
   intermediate:
     - trimmed_uncompressed: "{dir}/trimmed/{sample}.fasta"
-  
+
   logs:
     - trimming_log: "{dir}/logs/trimming/{sample}.log"
 
@@ -34,9 +34,9 @@ dependencies:
   conda:
     - "cutadapt>=4.0"
     - "python>=3.8"
-  
+
   scripts: []
-  
+
   modules:
     - "preprocessing"
 

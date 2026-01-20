@@ -6,14 +6,14 @@ module:
   version: "2.0.0"
   description: "Brief description of what this module does"
   author: "Author Name"
-  
+
 inputs:
   required:
     # List required input parameters and their descriptions
     # Example:
     # - input_dir: "Directory containing input files"
     # - sample_list: "List of samples to process"
-  
+
   optional:
     # List optional input parameters with defaults
     # Example:
@@ -25,12 +25,12 @@ outputs:
     # Main outputs that other modules will use
     # Example:
     # - processed_files: "{dir}/processed/{sample}.fastq"
-  
+
   intermediate:
     # Temporary files that may be needed for debugging
     # Example:
     # - stats: "{dir}/stats/{sample}.stats"
-  
+
   logs:
     # Log files
     # Example:
@@ -49,12 +49,12 @@ dependencies:
     # Example:
     # - "cutadapt>=4.0"
     # - "python>=3.8"
-  
+
   scripts:
     # List required Python scripts from lib/
     # Example:
     # - "lib.preprocessing.fastq_stats"
-  
+
   modules:
     # List other modules this module depends on
     # Example:

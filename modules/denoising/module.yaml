@@ -6,12 +6,12 @@ module:
   version: "2.0.0"
   description: "Generate ESVs using VSEARCH with dereplication, denoising, and chimera removal"
   author: "Hajibabaei Lab"
-  
+
 inputs:
   required:
     - dir: "Output directory for results"
     - SAMPLES_UNIQUE: "List of samples to process (from trimming module)"
-  
+
   optional:
     - pooling: "Whether to pool samples ('Yes' or 'No', default: 'Yes')"
 
@@ -19,12 +19,12 @@ outputs:
   primary:
     - esv_table: "{dir}/ESV.table.tmp"
     - denoised_sequences: "{dir}/cat.denoised.nonchimeras"
-  
+
   intermediate:
     - concatenated_fasta: "{dir}/cat.fasta.gz"
     - dereplicated_uniques: "{dir}/cat.uniques"
     - denoised_centroids: "{dir}/cat.denoised"
-  
+
   logs:
     - dereplication_log: "{dir}/dereplication.log"
     - denoising_log: "{dir}/denoising.log"
@@ -40,17 +40,17 @@ dependencies:
   conda:
     - "vsearch>=2.15"
     - "python>=3.8"
-  
+
   scripts:
     - "python_scripts/merge_esv_tables.py"
-  
+
   modules:
     - "trimming"
 
 parameters:
   vsearch_denoise:
     minsize: 8    # Minimum abundance to retain cluster (default: 8)
-  
+
   vsearch_table:
     t: 4          # Number of threads for table creation
 

@@ -20,18 +20,18 @@ def validate_inputs():
     for req in required:
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
-    
+
     # Validate pseudogene filtering option
     pseudogene_filtering = config.get("pseudogene_filtering", "no")
     if pseudogene_filtering not in ["yes", "no"]:
         raise ValueError(f"pseudogene_filtering must be 'yes' or 'no', got: {pseudogene_filtering}")
-    
+
     # If pseudogene filtering is enabled, validate removal type
     if pseudogene_filtering == "yes":
         removal_type = config.get("removal_type", 1)
         if removal_type not in [1, 2]:
             raise ValueError(f"removal_type must be 1 or 2, got: {removal_type}")
-        
+
         # If using HMM method, validate HMM file exists
         if removal_type == 2:
             hmm_file = HMM_CONFIG.get("path", config.get("hmm", "config/hmm/bold.hmm"))
@@ -318,7 +318,7 @@ else:
             time_min = 5
         shell:
             "python3 python_scripts/filter_rdp_taxonomy.py {input} {input} {config[marker]} > {output}"
-    
+
     rule copy_unfiltered_esv_table:
         """Copy unfiltered ESV table when pseudogene filtering is disabled"""
         input:

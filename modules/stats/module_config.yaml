@@ -15,11 +15,11 @@ parameters:
     per_sample: true          # Generate per-sample statistics (true/false)
     combined: true            # Generate combined statistics (true/false)
     include_intermediate: false  # Include intermediate files in report (true/false)
-  
+
   output:
     format: "csv"            # Output format: "csv", "tsv", "json"
     compression: true         # Compress output files (true/false)
-  
+
   defaults:
     output_prefix: "stats"    # Prefix for output files
 
@@ -29,7 +29,7 @@ files:
     - esv_table: "{output_dir}/ESV.table"
     - taxonomy: "{output_dir}/taxonomy.csv"
     - preprocessed: "{output_dir}/preprocessed/*.stats"
-  
+
   outputs:
     - summary_report: "{output_dir}/results_summary.csv"
     - per_sample_stats: "{output_dir}/stats_per_sample.csv"
@@ -42,7 +42,7 @@ software:
   conda:
     - "python>=3.8"
     - "biopython>=1.70"
-  
+
   external:
     - "python_scripts/fasta_gz_stats.py"
     - "python_scripts/fastq_gz_stats.py"
@@ -61,7 +61,7 @@ resources:
     threads: 1
     memory_mb: 4000
     time_minutes: 60
-  
+
   high_load:
     threads: 2
     memory_mb: 8000

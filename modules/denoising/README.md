@@ -199,13 +199,13 @@ Common errors and solutions:
 **Solution**: Use either "Yes" or "No" for the pooling parameter
 
 ### "Memory allocation error" during dereplication
-**Solution**: 
+**Solution**:
 - Use per-sample mode instead of pooling
 - Increase available memory
 - Reduce input data size through pre-filtering
 
 ### "Too many chimeras detected"
-**Solution**: 
+**Solution**:
 - Check for contamination in samples
 - Verify primer specificity
 - Consider adjusting experimental conditions

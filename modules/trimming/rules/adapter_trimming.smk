@@ -25,9 +25,9 @@ rule pair_reads:
         s = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
     params:
         q = lambda wc: PREPROCESSING_CONFIG.get("quality_score", 13),
-        m = lambda wc: PREPROCESSING_CONFIG.get("min_overlap", 25),
-        n = lambda wc: PREPROCESSING_CONFIG.get("max_mismatch", 0.02),
-        o = lambda wc: PREPROCESSING_CONFIG.get("min_match", 0.90)
+        o = lambda wc: PREPROCESSING_CONFIG.get("min_overlap", 25),
+        m = lambda wc: PREPROCESSING_CONFIG.get("max_mismatch", 0.02),
+        n = lambda wc: PREPROCESSING_CONFIG.get("min_match", 0.90)
     shell:
         """
         SeqPrep \
@@ -36,10 +36,10 @@ rule pair_reads:
             -1 {output.X1} \
             -2 {output.X2} \
             -q {params.q} \
+            -o {params.o} \
             -m {params.m} \
             -n {params.n} \
-            -s {output.s} \
-            -o {params.o}
+            -s {output.s}
         """
 
 rule trim_linked_adapters:
@@ -54,7 +54,7 @@ rule trim_linked_adapters:
         e = lambda wc: TRIMMING_CONFIG.get("error_rate", 0.1),
         O = lambda wc: TRIMMING_CONFIG.get("min_adapter_overlap", 3),
         mn = lambda wc: TRIMMING_CONFIG.get("max_n_bases", 3),
-        rc = lambda wc: TRIMMING_CONFIG.get("enable_rc", False)
+        rc = lambda wc: "--revcomp" if TRIMMING_CONFIG.get("enable_rc", False) else ""
     shell:
         """
         cutadapt \
@@ -64,11 +64,11 @@ rule trim_linked_adapters:
             -e {params.e} \
             -O {params.O} \
             --max-n={params.mn} \
-            {("--reverse-complement" if {params.rc} else "")} \
+            {params.rc} \
             --prefix {{name}} \
             --discard-untrimmed \
             --output {output} \
-            {input.paired} \
+            {input.paired}
         """
 
 rule gzip_trimmed_fasta:

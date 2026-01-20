@@ -14,14 +14,14 @@ parameters:
   vsearch_denoise:
     pool_samples: true     # Pool all samples for denoising (true/false)
     min_cluster_size: 8    # Minimum reads per ESV cluster (default 8)
-  
+
   vsearch_table:
     threads: 4             # Number of threads for table creation
-  
+
   vsearch_chimera:
     enabled: true          # Enable chimera detection/removal
     method: "uchime_denovo"  # Chimera detection method
-  
+
   defaults:
     output_prefix: "esv"    # Prefix for output files
     compression: true      # Compress output files
@@ -30,7 +30,7 @@ parameters:
 files:
   inputs:
     - trimmed_reads: "{output_dir}/trimmed/{sample}.fasta"
-  
+
   outputs:
     - esv_table: "{output_dir}/ESV.table"
     - esv_sequences: "{output_dir}/cat.denoised.nonchimeras"
@@ -43,7 +43,7 @@ software:
   conda:
     - "vsearch>=2.15"
     - "python>=3.8"
-  
+
   external:
     - "python_scripts/merge_esv_tables.py"
 
@@ -54,7 +54,7 @@ validation:
     min: 1
     max: 1000
     description: "Minimum reads per ESV cluster"
-  
+
   - parameter: "threads"
     type: "integer"
     min: 1
@@ -67,7 +67,7 @@ resources:
     threads: 4
     memory_mb: 8000
     time_minutes: 120
-  
+
   high_load:
     threads: 8
     memory_mb: 16000

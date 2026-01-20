@@ -18,15 +18,15 @@ def validate_inputs():
     for req in required:
         if req not in config:
             raise ValueError(f"Missing required config parameter: {req}")
-    
+
     # Check adapter file exists
     adapter_file = CUTADAPT_CONFIG.get("fasta")
     if not adapter_file:
         raise ValueError("Adapter file (CUTADAPT.fasta) must be specified")
-    
+
     if not os.path.exists(adapter_file):
         raise FileNotFoundError(f"Adapter file not found: {adapter_file}")
-    
+
     # Validate samples list
     if "SAMPLES_UNIQUE" not in config:
         raise ValueError("SAMPLES_UNIQUE not found in config. Did preprocessing module run?")

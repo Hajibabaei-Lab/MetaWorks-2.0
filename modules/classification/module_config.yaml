@@ -17,15 +17,15 @@ parameters:
     use_custom_classifier: true      # Use custom-trained classifier (true/false)
     classifier_path: null            # Path to custom classifier properties file
     min_confidence: 0.8              # Minimum confidence score (0-1)
-  
+
   rdp_builtin:
     builtin_classifier: "fungallsu"  # Built-in classifier choice (only if custom=false)
     # Options: fungallsu, fungalits_unite, fungalits_warcup
-  
+
   parallel:
     threads: 4                        # Number of threads for parallel processing
     chunk_size: 10000                 # Sequences per chunk
-  
+
   defaults:
     output_prefix: "rdp"              # Prefix for output files
 
@@ -34,7 +34,7 @@ files:
   inputs:
     - esv_sequences: "{output_dir}/cat.denoised.nonchimeras"
     - classifier: "{classifier_path}"
-  
+
   outputs:
     - rdp_output: "{output_dir}/rdp.out"
     - taxonomy_tsv: "{output_dir}/taxonomy.tsv"
@@ -47,7 +47,7 @@ software:
     - "rdp_classifier>=2.12"
     - "python>=3.8"
     - "biopython>=1.70"
-  
+
   external:
     - "python_scripts/parallel_rdp.py"
     - "python_scripts/rdp_tsv_to_csv.py"
@@ -56,23 +56,23 @@ software:
 validation:
   - parameter: "marker"
     type: "string"
-    allowed: ["COI", "16S", "16S_vertebrate", "18S_eukaryota", "18S_diatom", 
-               "12S_fish", "12S_vertebrate", "ITS_fungi", "28S_fungi", 
+    allowed: ["COI", "16S", "16S_vertebrate", "18S_eukaryota", "18S_diatom",
+               "12S_fish", "12S_vertebrate", "ITS_fungi", "28S_fungi",
                "rbcL_eukaryota", "rbcL_diatom", "rbcL_landPlant", "ITS_plants"]
     description: "Marker gene type"
-  
+
   - parameter: "memory_gb"
     type: "integer"
     min: 1
     max: 100
     description: "Memory allocation for RDP classifier (GB)"
-  
+
   - parameter: "min_confidence"
     type: "float"
     min: 0.0
     max: 1.0
     description: "Minimum confidence score threshold"
-  
+
   - parameter: "threads"
     type: "integer"
     min: 1
@@ -85,7 +85,7 @@ resources:
     threads: 4
     memory_mb: 20000
     time_minutes: 240
-  
+
   high_load:
     threads: 8
     memory_mb: 40000

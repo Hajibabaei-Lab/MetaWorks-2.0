@@ -6,13 +6,13 @@ module:
   version: "2.0.0"
   description: "Filter putative pseudogenes using ORF analysis (longest ORF or HMM-based methods)"
   author: "Hajibabaei Lab"
-  
+
 inputs:
   required:
     - dir: "Output directory for results"
     - rdp_output: "{dir}/rdp.out.tmp"  # From classification module
     - esv_table: "{dir}/ESV.table.tmp"  # From denoising module
-  
+
   optional:
     - pseudogene_filtering: "Whether to run pseudogene filtering ('yes' or 'no', default: 'no')"
     - removal_type: "Type of pseudogene removal (1 for longest ORF, 2 for HMM-based, default: 1)"
@@ -21,14 +21,14 @@ outputs:
   primary:
     - filtered_taxonomy: "{dir}/taxonomy.csv"
     - filtered_esv_table: "{dir}/ESV.table"
-  
+
   intermediate:
     - taxon_subset: "{dir}/taxon.zotus"
     - taxon_sequences: "{dir}/chimera.denoised.nonchimeras.taxon"
     - orfs_nt: "{dir}/orfs.fasta.nt.hmm"  # For HMM method
     - orfs_aa: "{dir}/orfs.fasta.aa.hmm"  # For HMM method
     - longest_orfs: "{dir}/longest.orfs.fasta"  # For longest ORF method
-  
+
   logs:
     - pseudogene_log: "{dir}/logs/pseudogene.log"
 
@@ -42,7 +42,7 @@ dependencies:
     - "hmmer>=3.0"
     - "orf-finder"  # ORFfinder
     - "python>=3.8"
-  
+
   scripts:
     - "python_scripts/get_taxon_only.py"
     - "python_scripts/filter_rdp_taxonomy.py"
@@ -51,7 +51,7 @@ dependencies:
     - "python_scripts/parse_orfs4.py"
     - "python_scripts/filter_rdp.py"
     - "python_scripts/add_seqs_to_tax4.py"
-  
+
   modules:
     - "classification"
     - "denoising"
@@ -63,10 +63,10 @@ parameters:
     ml: 30      # Minimum length (nt)
     n: 'true'   # Ignore nested ORFs
     strand: 'plus'  # Strand to search ('plus', 'minus', 'both')
-  
+
   hmm:
     path: "hmm/bold.hmm"  # Path to HMM profile (for HMM method)
-  
+
   grep:
     taxon1: '-e Arthropoda' # First taxonomic filter
     taxon2: '-v Chordata'   # Second taxonomic filter (for grep_type 2)

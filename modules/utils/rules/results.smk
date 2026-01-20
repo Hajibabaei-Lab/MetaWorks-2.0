@@ -26,7 +26,7 @@ def header_value(config):
 pseudogene_enabled = PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]
 
 if pseudogene_enabled:
-    
+
     # Strategy 1: Longest ORFs
     if PSEUDOGENE_CONFIG.get("method", "hmm") == "orf":
         rule generate_results_longest_orf:
@@ -34,8 +34,10 @@ if pseudogene_enabled:
                 table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
                 rdp = config["pipeline"]["output_dir"] + "/taxonomy_ORF.tsv"
             output: config["pipeline"]["output_dir"] + "/results.csv"
+            params:
+                header = header_value(config)
             shell:
-                "python3 python_scripts/add_abundance_to_rdp_out.py {input.table} {input.rdp} {header} > {output}"
+                "python3 python_scripts/add_abundance_to_rdp_out.py {input.table} {input.rdp} '{params.header}' > {output}"
 
     # Strategy 2: HMM-based ORFs
     elif PSEUDOGENE_CONFIG.get("method", "hmm") == "hmm" and CLASSIFICATION_CONFIG.get("marker", "COI") == "COI":

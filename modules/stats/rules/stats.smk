@@ -65,7 +65,7 @@ rule cat_paired_stats_add_headers:
 rule trimmed_stats:
     input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
     output: temp(config["pipeline"]["output_dir"] + "/stats/{sample}.trimmedstats")
-    shell: "python3 python_scripts/fasta_gz_stats.py {input} >> {output}"
+    shell: "python3 python_scripts/fasta_gz_stats.py {input} > {output}"
 
 rule cat_trimmed_stats:
     input: expand(config["pipeline"]["output_dir"] + "/stats/{sample}.trimmedstats", sample=SAMPLES_UNIQUE)

@@ -17,9 +17,9 @@ rule taxonomic_assignment:
         config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
     output:
         config["pipeline"]["output_dir"] + "/rdp.out.tmp"
-    threads: 4 
+    threads: 4
     params:
-        memory = lambda wc: f"{CLASSIFICATION_CONFIG.get('memory_gb', 20)}G",
+        memory = lambda wc: f"{(CLASSIFICATION_CONFIG.get('rdp', {}) if isinstance(CLASSIFICATION_CONFIG.get('rdp', {}), dict) else {}).get('memory_gb', CLASSIFICATION_CONFIG.get('memory_gb', 20))}G",
         options = lambda wildcards: rdp_options(config)
     shell:
         """

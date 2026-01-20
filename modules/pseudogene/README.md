@@ -230,7 +230,7 @@ The module performs automatic validation:
 Common errors and solutions:
 
 ### "HMM profile file not found: {path}"
-**Solution**: 
+**Solution**:
 - Verify path to HMM profile is correct
 - Download required HMM profiles (e.g., BOLD COI HMM)
 - Set correct path in configuration
