@@ -200,14 +200,28 @@ See [Module Standards](docs/MODULE_STANDARDS.md) for guidance on creating new pi
 ## Citation
 
 If you use MetaWorks in your research, please cite:
+How to cite
 
-```
-[Add citation information here]
-```
+If you use this dataflow or any of the provided scripts, please cite the MetaWorks paper:
+Porter, T. M., & Hajibabaei, M. (2022). MetaWorks: A flexible, scalable bioinformatic pipeline for high-throughput multi-marker biodiversity assessments. PLOS ONE, 17(9), e0274260. doi: 10.1371/journal.pone.0274260
+
+You can also site this repository: Teresita M. Porter. (2020, June 25). MetaWorks: A Multi-Marker Metabarcode Pipeline (Version v1.10.0). Zenodo. http://doi.org/10.5281/zenodo.4741407
+
+If you use this dataflow for making COI taxonomic assignments, please cite the COI classifier publication:
+Porter, T. M., & Hajibabaei, M. (2018). Automated high throughput animal CO1 metabarcode classification. Scientific Reports, 8, 4226.
+
+If you use the pseudogene filtering methods, please cite the pseudogene publication: Porter, T.M., & Hajibabaei, M. (2021). Profile hidden Markov model sequence analysis can help remove putative pseudogenes from DNA barcoding and metabarcoding datasets. BMC Bioinformatics, 22: 256.
+
+If you use the RDP classifier, please cite the publication:
+Wang, Q., Garrity, G. M., Tiedje, J. M., & Cole, J. R. (2007). Naive Bayesian Classifier for Rapid Assignment of rRNA Sequences into the New Bacterial Taxonomy. Applied and Environmental Microbiology, 73(16), 5261–5267. doi:10.1128/AEM.00062-07
+
+Last updated: September 30, 2022
 
 ## Acknowledgments
 
 - Hajibabaei Lab
+- Terri Porter
+- Alex Song
 - Contributors and community members
 
 ## Support
