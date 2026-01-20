@@ -5,11 +5,13 @@ This module defines domain-specific exceptions that provide better error
 context and enable more precise error handling throughout the codebase.
 """
 
+from typing import Any, Optional
+
 
 class MetaWorksError(Exception):
     """Base exception for all MetaWorks-related errors."""
 
-    def __init__(self, message: str, suggestion: str = None):
+    def __init__(self, message: str, suggestion: Optional[str] = None, **context: Any):
         """
         Initialize MetaWorksError.
 
@@ -19,18 +21,30 @@ class MetaWorksError(Exception):
         """
         self.message = message
         self.suggestion = suggestion
+        self.context = context
         super().__init__(self.message)
 
     def __str__(self):
+        parts = [self.message]
+        details = self.context.get("details")
+        if details:
+            parts.append(f"Details: {details}")
         if self.suggestion:
-            return f"{self.message}\nSuggestion: {self.suggestion}"
-        return self.message
+            parts.append(f"Suggestion: {self.suggestion}")
+        return "\n".join(parts)
 
 
 class ConfigurationError(MetaWorksError):
     """Raised when there are issues with configuration."""
 
-    def __init__(self, message: str, config_key: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        config_key: Optional[str] = None,
+        filepath: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize ConfigurationError.
 
@@ -40,13 +54,27 @@ class ConfigurationError(MetaWorksError):
             suggestion: Optional fix suggestion
         """
         self.config_key = config_key
-        super().__init__(message, suggestion)
+        self.filepath = filepath
+        super().__init__(
+            message,
+            suggestion,
+            config_key=config_key,
+            filepath=filepath,
+            details=details,
+        )
 
 
 class ValidationError(MetaWorksError):
     """Raised when input validation fails."""
 
-    def __init__(self, message: str, field: str = None, value: any = None):
+    def __init__(
+        self,
+        message: str,
+        field: Optional[str] = None,
+        value: Optional[Any] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize ValidationError.
 
@@ -57,14 +85,21 @@ class ValidationError(MetaWorksError):
         """
         self.field = field
         self.value = value
-        suggestion = f"Check the '{field}' field" if field else None
-        super().__init__(message, suggestion)
+        if suggestion is None and field:
+            suggestion = f"Check the '{field}' field"
+        super().__init__(message, suggestion, field=field, value=value, details=details)
 
 
 class FileProcessingError(MetaWorksError):
     """Raised when file processing operations fail."""
 
-    def __init__(self, message: str, filepath: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        filepath: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize FileProcessingError.
 
@@ -74,14 +109,19 @@ class FileProcessingError(MetaWorksError):
             suggestion: Optional fix suggestion
         """
         self.filepath = filepath
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, filepath=filepath, details=details)
 
 
 class PipelineExecutionError(MetaWorksError):
     """Raised when pipeline execution fails."""
 
     def __init__(
-        self, message: str, stage: str = None, exit_code: int = None, suggestion: str = None
+        self,
+        message: str,
+        stage: Optional[str] = None,
+        exit_code: Optional[int] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
     ):
         """
         Initialize PipelineExecutionError.
@@ -94,13 +134,19 @@ class PipelineExecutionError(MetaWorksError):
         """
         self.stage = stage
         self.exit_code = exit_code
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, stage=stage, exit_code=exit_code, details=details)
 
 
 class RuntimeError(MetaWorksError):
     """Raised when runtime-specific operations fail."""
 
-    def __init__(self, message: str, runtime_type: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        runtime_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize RuntimeError.
 
@@ -110,13 +156,19 @@ class RuntimeError(MetaWorksError):
             suggestion: Optional fix suggestion
         """
         self.runtime_type = runtime_type
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, runtime_type=runtime_type, details=details)
 
 
 class StateManagementError(MetaWorksError):
     """Raised when state management operations fail."""
 
-    def __init__(self, message: str, run_id: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        run_id: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize StateManagementError.
 
@@ -126,13 +178,19 @@ class StateManagementError(MetaWorksError):
             suggestion: Optional fix suggestion
         """
         self.run_id = run_id
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, run_id=run_id, details=details)
 
 
 class DependencyError(MetaWorksError):
     """Raised when required dependencies are missing or incompatible."""
 
-    def __init__(self, message: str, dependency: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        dependency: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize DependencyError.
 
@@ -144,13 +202,19 @@ class DependencyError(MetaWorksError):
         self.dependency = dependency
         if not suggestion and dependency:
             suggestion = f"Install {dependency}"
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, dependency=dependency, details=details)
 
 
 class DataError(MetaWorksError):
     """Raised when data processing issues occur."""
 
-    def __init__(self, message: str, data_type: str = None, suggestion: str = None):
+    def __init__(
+        self,
+        message: str,
+        data_type: Optional[str] = None,
+        suggestion: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         """
         Initialize DataError.
 
@@ -160,4 +224,4 @@ class DataError(MetaWorksError):
             suggestion: Optional fix suggestion
         """
         self.data_type = data_type
-        super().__init__(message, suggestion)
+        super().__init__(message, suggestion, data_type=data_type, details=details)

@@ -5,7 +5,7 @@ This module provides functions to merge multiple ESV tables.
 """
 
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import pandas as pd
 
@@ -13,7 +13,7 @@ from ..exceptions import FileProcessingError, ValidationError
 
 
 def merge_esv_tables(
-    table_paths: List[Union[str, Path]], output_path: Union[str, Path] = None
+    table_paths: List[Union[str, Path]], output_path: Optional[Union[str, Path]] = None
 ) -> pd.DataFrame:
     """
     Merge multiple ESV tables into a single combined table.
@@ -40,9 +40,9 @@ def merge_esv_tables(
             "No ESV tables provided", suggestion="Provide at least one ESV table path"
         )
 
-    table_paths = [Path(p) for p in table_paths]
+    path_list: List[Path] = [Path(p) for p in table_paths]
 
-    for table_path in table_paths:
+    for table_path in path_list:
         if not table_path.exists():
             raise FileProcessingError(
                 f"ESV table file not found: {table_path}",
@@ -52,7 +52,7 @@ def merge_esv_tables(
 
     # Read all ESV tables
     tables = []
-    for table_path in table_paths:
+    for table_path in path_list:
         try:
             df = pd.read_csv(table_path, sep="\t", index_col=0)
             tables.append(df)
@@ -92,8 +92,8 @@ def merge_esv_tables(
 
     # Write to output path if provided
     if output_path:
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        merged.to_csv(output_path, sep="\t")
+        out_path = Path(output_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        merged.to_csv(out_path, sep="\t")
 
     return merged

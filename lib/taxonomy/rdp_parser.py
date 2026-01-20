@@ -4,7 +4,7 @@ RDP classifier output parser for MetaWorks pipeline
 
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class RDPParser:
@@ -18,9 +18,9 @@ class RDPParser:
             filepath: Path to RDP output file
         """
         self.filepath = Path(filepath)
-        self.records: List[Dict] = []
+        self.records: List[Dict[str, Any]] = []
 
-    def parse(self) -> List[Dict]:
+    def parse(self) -> List[Dict[str, Any]]:
         """
         Parse RDP output file.
 
@@ -39,7 +39,7 @@ class RDPParser:
 
         return self.records
 
-    def _parse_line(self, line: str) -> Optional[Dict]:
+    def _parse_line(self, line: str) -> Optional[Dict[str, Any]]:
         """
         Parse a single line of RDP output.
 
@@ -56,7 +56,8 @@ class RDPParser:
         if len(parts) < 3:
             return None
 
-        record = {"id": parts[0], "taxonomy": {}}
+        taxonomy: Dict[str, Dict[str, Any]] = {}
+        record: Dict[str, Any] = {"id": parts[0], "taxonomy": taxonomy}
 
         # Parse taxonomic ranks (triplets of: name, rank, bootstrap)
         i = 1
@@ -65,11 +66,12 @@ class RDPParser:
             rank = parts[i + 1]
             bootstrap = parts[i + 2]
 
-            record["taxonomy"][rank.lower()] = {
+            tax_value: Dict[str, Any] = {
                 "name": taxon_name,
                 "rank": rank,
                 "bootstrap": float(bootstrap) if bootstrap.replace(".", "").isdigit() else 0.0,
             }
+            taxonomy[rank.lower()] = tax_value
 
             i += 3
 

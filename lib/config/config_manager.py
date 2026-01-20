@@ -150,17 +150,19 @@ class ConfigManager:
         Raises:
             ConfigError: If configs haven't been loaded
         """
-        if self.system_config is None:
+        system_config = self.system_config
+        if system_config is None:
             raise ConfigError("System config not loaded. Call load_system_config() first.")
 
         if not self.module_configs:
             raise ConfigError("Module configs not loaded. Call load_module_configs() first.")
 
-        if self.user_config is None:
+        user_config = self.user_config
+        if user_config is None:
             raise ConfigError("User config not loaded. Call load_user_config() first.")
 
         # Start with system config
-        merged = self.system_config.copy()
+        merged = system_config.copy()
 
         # Add module configs
         merged["modules"] = {}
@@ -168,7 +170,7 @@ class ConfigManager:
             merged["modules"][module_name] = module_config
 
         # Merge user config on top
-        merged = merge_configs(merged, self.user_config)
+        merged = merge_configs(merged, user_config)
 
         self.merged_config = merged
         return merged
@@ -226,10 +228,14 @@ class ConfigManager:
                 errors.append(f"Module {module_name} config validation: {str(e)}")
 
         # Validate user config
-        try:
-            UserConfig(**self.user_config)
-        except Exception as e:
-            errors.append(f"User config validation: {str(e)}")
+        user_config = self.user_config
+        if user_config is None:
+            errors.append("User config not loaded. Call load_user_config() first.")
+        else:
+            try:
+                UserConfig(**user_config)
+            except Exception as e:
+                errors.append(f"User config validation: {str(e)}")
 
         return errors
 
@@ -252,11 +258,16 @@ class ConfigManager:
         if module_name not in self.module_configs:
             raise ConfigError(f"Module not found: {module_name}")
 
+        user_config = self.user_config
+        if user_config is None:
+            raise ConfigError("User config not loaded. Call load_user_config() first.")
+
         # Get module defaults
         module_defaults = self.module_configs[module_name].get("parameters", {})
 
         # Get user overrides
-        user_overrides = self.user_config.get(module_name, {})
+        raw_user_overrides = user_config.get(module_name, {})
+        user_overrides = raw_user_overrides if isinstance(raw_user_overrides, dict) else {}
 
         # Merge them
         return merge_configs(module_defaults, user_overrides)
@@ -282,10 +293,10 @@ class ConfigManager:
 
         # Flatten configuration for Snakemake
         # Convert module configs to old-style format for compatibility
-        exported = {}
+        exported: Dict[str, Any] = {}
 
         # Add system settings
-        exported.update(self.system_config)
+        exported.update(self.system_config or {})
 
         # Add module parameters in old format
         for module_name, module_config in self.module_configs.items():
@@ -298,7 +309,7 @@ class ConfigManager:
                     exported[old_key] = param_value
 
         # Add user settings
-        exported.update(self.user_config)
+        exported.update(self.user_config or {})
 
         return exported
 

@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from lib.exceptions import StateManagementError
 
@@ -76,7 +76,7 @@ class RunStateStore:
         """Read state from disk."""
         try:
             with self.state_file.open() as fh:
-                return json.load(fh)
+                return cast(Dict[str, Any], json.load(fh))
         except json.JSONDecodeError as exc:
             raise StateManagementError(
                 f"Invalid JSON in state file: {self.state_file}",

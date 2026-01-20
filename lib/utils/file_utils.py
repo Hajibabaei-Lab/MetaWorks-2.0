@@ -3,7 +3,7 @@ File utility functions for MetaWorks pipeline
 """
 
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 
 def ensure_directory(directory: Union[str, Path]) -> Path:
@@ -110,7 +110,9 @@ def find_files_by_pattern(
         return sorted(dir_path.glob(pattern))
 
 
-def get_sample_name(filepath: Union[str, Path], remove_extensions: List[str] = None) -> str:
+def get_sample_name(
+    filepath: Union[str, Path], remove_extensions: Optional[List[str]] = None
+) -> str:
     """
     Extract sample name from filepath.
 

@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yaml
 
@@ -49,9 +49,12 @@ def load_yaml(file_path: str) -> Dict[str, Any]:
             config = yaml.safe_load(f)
 
         if config is None:
-            config = {}
+            return {}
 
-        return config
+        if not isinstance(config, dict):
+            raise ParseError(f"Expected a YAML mapping at top-level in {file_path}")
+
+        return cast(Dict[str, Any], config)
     except yaml.YAMLError as e:
         raise ParseError(f"Error parsing YAML file {file_path}: {str(e)}")
     except Exception as e:
@@ -92,8 +95,8 @@ def validate_parameter(
     param_type: str,
     min_value: Optional[float] = None,
     max_value: Optional[float] = None,
-    allowed_values: Optional[list] = None,
-) -> tuple[bool, Optional[str]]:
+    allowed_values: Optional[List[Any]] = None,
+) -> Tuple[bool, Optional[str]]:
     """
     Validate a parameter against rules.
 
@@ -135,7 +138,7 @@ def validate_parameter(
     return True, None
 
 
-def find_config_file(filename: str, search_paths: list[str]) -> Optional[str]:
+def find_config_file(filename: str, search_paths: List[str]) -> Optional[str]:
     """
     Find a configuration file in a list of search paths.
 

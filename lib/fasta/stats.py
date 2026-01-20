@@ -6,8 +6,9 @@ This module provides functions to calculate statistics for sequence files.
 
 import gzip
 import statistics
+from contextlib import ExitStack
 from pathlib import Path
-from typing import Dict, Union
+from typing import IO, Dict, Union
 
 from ..exceptions import FileProcessingError
 
@@ -46,12 +47,14 @@ def get_fasta_stats(
     lengths = []
 
     try:
-        # Open file based on compression type
-        opener = gzip.open if is_gzipped or input_path.suffix == ".gz" else open
-        mode = "rt" if is_gzipped or input_path.suffix == ".gz" else "r"
+        with ExitStack() as stack:
+            handle: IO[str]
+            if is_gzipped or input_path.suffix == ".gz":
+                handle = stack.enter_context(gzip.open(input_path, "rt"))
+            else:
+                handle = stack.enter_context(input_path.open("r"))
 
-        with opener(input_path, mode) as f:
-            for i, line in enumerate(f):
+            for i, line in enumerate(handle):
                 if (i + 1) % 2 == 0:  # Sequence lines (every other line in FASTA)
                     lengths.append(len(line.strip()))
 
@@ -76,6 +79,7 @@ def get_fasta_stats(
     mean_val = statistics.mean(lengths)
     median_val = statistics.median(lengths)
 
+    mode_val: Union[int, str]
     try:
         mode_val = statistics.mode(lengths)
     except statistics.StatisticsError:
@@ -126,12 +130,14 @@ def get_fastq_stats(
     lengths = []
 
     try:
-        # Open file based on compression type
-        opener = gzip.open if is_gzipped or input_path.suffix == ".gz" else open
-        mode = "rt" if is_gzipped or input_path.suffix == ".gz" else "r"
+        with ExitStack() as stack:
+            handle: IO[str]
+            if is_gzipped or input_path.suffix == ".gz":
+                handle = stack.enter_context(gzip.open(input_path, "rt"))
+            else:
+                handle = stack.enter_context(input_path.open("r"))
 
-        with opener(input_path, mode) as f:
-            for i, line in enumerate(f):
+            for i, line in enumerate(handle):
                 if (i + 1) % 4 == 2:  # Sequence lines in FASTQ (lines 2, 6, 10, ...)
                     lengths.append(len(line.strip()))
 
@@ -156,6 +162,7 @@ def get_fastq_stats(
     mean_val = statistics.mean(lengths)
     median_val = statistics.median(lengths)
 
+    mode_val: Union[int, str]
     try:
         mode_val = statistics.mode(lengths)
     except statistics.StatisticsError:

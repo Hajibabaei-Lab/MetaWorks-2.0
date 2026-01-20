@@ -5,7 +5,7 @@ This module provides utility functions for manipulating taxonomy data.
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pandas as pd
 
@@ -15,7 +15,7 @@ from ..exceptions import FileProcessingError, ValidationError
 def add_abundance(
     taxonomy_file: Union[str, Path],
     esv_table: Union[str, Path],
-    output_file: Union[str, Path] = None,
+    output_file: Optional[Union[str, Path]] = None,
 ) -> pd.DataFrame:
     """
     Add abundance data from ESV table to taxonomy output.
@@ -109,7 +109,9 @@ def add_abundance(
 
 
 def get_taxon_only(
-    taxonomy_file: Union[str, Path], target_rank: str, output_file: Union[str, Path] = None
+    taxonomy_file: Union[str, Path],
+    target_rank: str,
+    output_file: Optional[Union[str, Path]] = None,
 ) -> pd.DataFrame:
     """
     Extract only taxonomic information for a specific rank.

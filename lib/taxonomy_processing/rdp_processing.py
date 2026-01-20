@@ -5,7 +5,7 @@ This module provides functions for processing RDP classifier outputs.
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pandas as pd
 
@@ -13,7 +13,7 @@ from ..exceptions import FileProcessingError, ValidationError
 
 
 def tsv_to_csv(
-    input_file: Union[str, Path], marker: str, output_file: Union[str, Path] = None
+    input_file: Union[str, Path], marker: str, output_file: Optional[Union[str, Path]] = None
 ) -> pd.DataFrame:
     """
     Convert RDP classifier TSV output to CSV with proper headers.
@@ -163,7 +163,9 @@ def tsv_to_csv(
 
 
 def filter_rdp_taxonomy(
-    input_file: Union[str, Path], min_confidence: float = 0.8, output_file: Union[str, Path] = None
+    input_file: Union[str, Path],
+    min_confidence: float = 0.8,
+    output_file: Optional[Union[str, Path]] = None,
 ) -> pd.DataFrame:
     """
     Filter RDP taxonomy output by confidence threshold.
@@ -268,6 +270,5 @@ def parallel_rdp(
     # Note: Actual RDP classifier execution would go here
     # This is a placeholder for the implementation
     raise NotImplementedError(
-        "parallel_rdp is not yet implemented",
-        suggestion="Use the RDP classifier directly or implement this function",
+        "parallel_rdp is not yet implemented. Use the RDP classifier directly or implement this function."
     )

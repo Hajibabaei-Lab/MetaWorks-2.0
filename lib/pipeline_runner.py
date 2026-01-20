@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from lib.exceptions import FileProcessingError, PipelineExecutionError
 from lib.utils.file_utils import ensure_directory
@@ -315,7 +315,7 @@ class PipelineRunner:
         input_paths: Optional[Iterable[Path]],
     ) -> Iterable[Path]:
         """Copy inputs into a staging directory for reproducibility."""
-        staged_inputs = []
+        staged_inputs: List[Path] = []
         if not input_paths:
             return staged_inputs
         inputs_dir = ensure_directory(run_dir / "inputs")

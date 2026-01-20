@@ -5,8 +5,9 @@ This module provides utility functions for manipulating FASTA/FASTQ files.
 """
 
 import gzip
+from contextlib import ExitStack
 from pathlib import Path
-from typing import Union
+from typing import IO, Dict, Union
 
 from Bio import SeqIO
 
@@ -64,7 +65,9 @@ def reverse_complement(input_file: Union[str, Path], output_file: Union[str, Pat
 
 
 def rename_fasta_gzip(
-    input_file: Union[str, Path], output_file: Union[str, Path], name_mapping: dict
+    input_file: Union[str, Path],
+    output_file: Union[str, Path],
+    name_mapping: Dict[str, str],
 ) -> None:
     """
     Rename sequences in a FASTA file based on mapping dictionary.
@@ -96,15 +99,19 @@ def rename_fasta_gzip(
         # Create output directory if needed
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Open files (handles both gzipped and plain text)
-        opener_in = gzip.open if input_path.suffix == ".gz" else open
-        opener_out = gzip.open if output_path.suffix == ".gz" else open
-        mode_in = "rt" if input_path.suffix == ".gz" else "r"
-        mode_out = "wt" if output_path.suffix == ".gz" else "w"
+        with ExitStack() as stack:
+            handle_in: IO[str]
+            handle_out: IO[str]
+            if input_path.suffix == ".gz":
+                handle_in = stack.enter_context(gzip.open(input_path, "rt"))
+            else:
+                handle_in = stack.enter_context(input_path.open("r"))
 
-        with opener_in(input_path, mode_in) as handle_in, opener_out(
-            output_path, mode_out
-        ) as handle_out:
+            if output_path.suffix == ".gz":
+                handle_out = stack.enter_context(gzip.open(output_path, "wt"))
+            else:
+                handle_out = stack.enter_context(output_path.open("w"))
+
             # Parse FASTA file
             for record in SeqIO.parse(handle_in, "fasta"):
                 # Rename sequence if mapping exists

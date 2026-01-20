@@ -9,7 +9,7 @@ import gzip
 import statistics
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class SequenceStats:
@@ -26,7 +26,7 @@ class SequenceStats:
         self.lengths: List[int] = []
         self.file_type: Optional[str] = None
 
-    def calculate(self) -> Dict:
+    def calculate(self) -> Dict[str, Any]:
         """
         Calculate all statistics for the file.
 
@@ -49,7 +49,7 @@ class SequenceStats:
         except (OSError, IOError):
             return False
 
-    def _process_gzip(self) -> Dict:
+    def _process_gzip(self) -> Dict[str, Any]:
         """Process gzipped file"""
         try:
             with gzip.open(self.filepath, "rt") as f:
@@ -59,7 +59,7 @@ class SequenceStats:
 
         return self._compute_stats()
 
-    def _process_text(self) -> Dict:
+    def _process_text(self) -> Dict[str, Any]:
         """Process uncompressed text file"""
         try:
             with open(self.filepath, "r") as f:
@@ -102,7 +102,7 @@ class SequenceStats:
             if not line.startswith(">") and line.strip():
                 self.lengths.append(len(line.strip()))
 
-    def _compute_stats(self) -> Dict:
+    def _compute_stats(self) -> Dict[str, Any]:
         """Compute statistics from collected lengths"""
         if not self.lengths:
             raise ValueError(f"No sequences found in {self.filepath}")
@@ -128,7 +128,9 @@ class SequenceStats:
             return "NA"
 
 
-def calculate_stats(filepath: Union[str, Path], output_format: str = "tsv") -> str:
+def calculate_stats(
+    filepath: Union[str, Path], output_format: str = "tsv"
+) -> Union[str, Dict[str, Any]]:
     """
     Calculate statistics for a sequence file.
 

@@ -5,7 +5,7 @@ This module provides functions to filter ESV tables based on ORF FASTA files.
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pandas as pd
 from Bio import SeqIO
@@ -16,7 +16,7 @@ from ..exceptions import FileProcessingError
 def filter_esv_table(
     esv_table_path: Union[str, Path],
     orf_fasta_path: Union[str, Path],
-    output_path: Union[str, Path] = None,
+    output_path: Optional[Union[str, Path]] = None,
 ) -> pd.DataFrame:
     """
     Filter ESV table by ESV IDs present in ORF FASTA file.
