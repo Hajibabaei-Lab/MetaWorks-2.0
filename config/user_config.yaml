@@ -37,6 +37,9 @@ modules:
   trimming: true
   denoising: true
   classification: true
+  # Classifier backend to use when classification=true
+  # Options: rdp, sintax
+  classification_engine: "rdp"
   pseudogene_filtering: false
   stats: true
 
@@ -98,21 +101,38 @@ classification:
   # Marker gene: COI, 16S, 18S, 12S, ITS, rbcL, etc.
   marker: "COI"
 
-  # Memory allocation for RDP classifier (GB)
-  memory_gb: 20
-
-  # Use custom-trained classifier (true/false)
-  use_custom_classifier: true
-
-  # Path to custom classifier (only if use_custom_classifier=true)
-  classifier_path: "classifiers/COI.properties"
-
-  # Built-in classifier choice (only if use_custom_classifier=false)
-  # Options: fungallsu, fungalits_unite, fungalits_warcup
-  builtin_classifier: "fungallsu"
-
   # Confidence score threshold (0-1)
   min_confidence: 0.8
+
+  # Engine-specific settings
+  rdp:
+    # Memory allocation for RDP classifier (GB)
+    memory_gb: 20
+
+    # Use custom-trained classifier (true/false)
+    use_custom_classifier: true
+
+    # Path to custom classifier properties file (only if use_custom_classifier=true)
+    # For UI/container runs, prefer: "runtime/classifiers/<your_classifier.properties>"
+    classifier_path: "runtime/classifiers/COI.properties"
+
+    # Built-in classifier choice (only if use_custom_classifier=false)
+    # Options: fungallsu, fungalits_unite, fungalits_warcup
+    builtin_classifier: "fungallsu"
+
+  # VSEARCH SINTAX engine (optional)
+  # Notes:
+  # - Your DB FASTA headers must contain a `;tax=...;` annotation (SINTAX format).
+  # - Output is converted into MetaWorks' RDP-like `rdp.out.tmp` table so downstream modules work.
+  sintax:
+    # Path to SINTAX-formatted reference FASTA
+    db_fasta: null
+
+    # VSEARCH SINTAX cutoff (defaults to classification.min_confidence when null)
+    cutoff: null
+
+    # Threads for VSEARCH
+    threads: 4
 
 # Pseudogene Filtering: Remove potential pseudogenes
 pseudogene_filtering:
@@ -128,7 +148,7 @@ pseudogene_filtering:
 
   # Second grep pattern for compound search (e.g., '-v Chordata' to exclude)
   # Only used if grep_type=2
-  taxon2: ""
+  taxon2: "-v Chordata"
 
   # Path to HMM profile (only if method="hmm")
   hmm_profile: "config/hmm/bold.hmm"

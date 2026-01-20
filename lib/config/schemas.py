@@ -175,6 +175,17 @@ class ModuleSelection(BaseModel):
     classification: bool = True
     pseudogene_filtering: bool = False
     stats: bool = True
+    classification_engine: str = Field(
+        default="rdp",
+        description="Classification backend selector (rdp or sintax).",
+    )
+
+    @validator("classification_engine")
+    def validate_classification_engine(cls, v):
+        allowed = ["rdp", "sintax"]
+        if v not in allowed:
+            raise ValueError(f"classification_engine must be one of {allowed}")
+        return v
 
 
 class PreprocessingConfig(BaseModel):
@@ -201,15 +212,31 @@ class DenoisingConfig(BaseModel):
 
 
 class ClassificationConfig(BaseModel):
+    engine: str = Field(default="rdp", description="Classifier backend (one per run)")
     marker: str = Field(default="COI", description="Marker gene")
-    memory_gb: int = Field(default=20, ge=1, le=100)
-    use_custom_classifier: bool = Field(default=True)
-    classifier_path: Optional[str] = Field(default=None)
-    builtin_classifier: str = Field(default="fungallsu")
     min_confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+
+    # Engine-specific configuration blocks (new format)
+    rdp: Optional[Dict[str, Any]] = None
+    sintax: Optional[Dict[str, Any]] = None
+
+    # Legacy flat keys (kept for backward compatibility)
+    memory_gb: Optional[int] = Field(default=None, ge=1, le=100)
+    use_custom_classifier: Optional[bool] = None
+    classifier_path: Optional[str] = Field(default=None)
+    builtin_classifier: Optional[str] = Field(default=None)
+
+    @validator("engine")
+    def validate_engine(cls, v):
+        allowed = ["rdp", "sintax"]
+        if v not in allowed:
+            raise ValueError(f"engine must be one of {allowed}")
+        return v
 
     @validator("builtin_classifier")
     def validate_builtin_classifier(cls, v):
+        if v is None:
+            return v
         allowed = ["fungallsu", "fungalits_unite", "fungalits_warcup"]
         if v not in allowed:
             raise ValueError(f"builtin_classifier must be one of {allowed}")

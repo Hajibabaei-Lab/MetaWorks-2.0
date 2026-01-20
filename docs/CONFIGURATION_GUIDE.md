@@ -199,13 +199,26 @@ denoising:
 #### Classification
 
 ```yaml
+modules:
+  classification: true
+  classification_engine: "rdp"    # "rdp" or "sintax" (one per run)
+
 classification:
   marker: "COI"                  # Marker gene type
-  memory_gb: 20                    # Memory for RDP classifier
-  use_custom_classifier: true          # Use custom or built-in
-  classifier_path: "classifiers/COI.properties"  # Custom classifier
-  builtin_classifier: "fungallsu"    # Built-in choice
   min_confidence: 0.8               # Confidence threshold
+
+  # RDP engine settings
+  rdp:
+    memory_gb: 20                    # Memory for RDP classifier
+    use_custom_classifier: true      # Use custom or built-in
+    classifier_path: "runtime/classifiers/COI.properties"  # Custom classifier
+    builtin_classifier: "fungallsu"  # Built-in choice
+
+  # VSEARCH SINTAX engine settings (optional)
+  sintax:
+    db_fasta: null                   # SINTAX-formatted DB FASTA (headers include `;tax=...;`)
+    cutoff: null                     # Defaults to min_confidence
+    threads: 4
 ```
 
 **Marker Types:**
@@ -221,6 +234,12 @@ classification:
 |--------|--------------|
 | `use_custom_classifier: true` | COI, 12S, rbcL, custom markers |
 | `use_custom_classifier: false` | 16S, ITS fungi (built-in classifiers) |
+
+**Multiple tool integration (one per run):**
+- Use `modules.classification_engine: "rdp"` (default) for RDP Classifier.
+- Use `modules.classification_engine: "sintax"` to classify with VSEARCH SINTAX and convert output into the RDP-like table MetaWorks expects downstream.
+
+Legacy configs may still use `classification.engine`, but `modules.classification_engine` takes precedence when set.
 
 ---
 

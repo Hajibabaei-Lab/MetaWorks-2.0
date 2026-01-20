@@ -2,7 +2,7 @@
 
 ## Overview
 
-The classification module performs taxonomic assignment of ESVs using the RDP Classifier. It leverages parallel processing to efficiently classify large numbers of sequences against reference databases, supporting both custom-trained and built-in classifiers.
+The classification module performs taxonomic assignment of ESVs and emits a standard `rdp.out.tmp` table used by downstream modules. It supports multiple classifier backends (selected once per run in config), including RDP Classifier and VSEARCH SINTAX.
 
 ## Features
 
@@ -16,7 +16,8 @@ The classification module performs taxonomic assignment of ESVs using the RDP Cl
 ## Requirements
 
 ### Software Dependencies
-- RDP Classifier >= 2.12
+- RDP Classifier >= 2.12 (for `modules.classification_engine: rdp`)
+- VSEARCH (for `modules.classification_engine: sintax`)
 - Python >= 3.8
 - BioPython >= 1.70
 - Java (required by RDP Classifier)
@@ -26,43 +27,47 @@ The classification module performs taxonomic assignment of ESVs using the RDP Cl
 
 ## Configuration
 
-### Required Parameters
-
-```yaml
-dir: "output/directory"
-RDP:
-  custom: "yes" # or "no"
-```
-
-### Optional Parameters (with defaults)
-
-```yaml
-RDP:
-  memory: "20g"              # Memory allocation for RDP classifier
-  t: "path/to/rRNAClassifier.properties"  # Properties file for custom classifier
-  c: 0                      # Parameter for 16S built-in classifier
-  f: "fixrank"              # Parameter for 16S built-in classifier
- g: "fungallsu"            # Parameter for fungal built-in classifier
-marker: "COI"               # Marker gene type (for classifier options)
-```
-
-## Module-Specific Configuration
-
-Override defaults using the `modules` config namespace:
+### User Config (recommended)
 
 ```yaml
 modules:
-  classification:
-    rdp:
-      memory: "10g"         # Lower memory allocation
-      custom: "yes"         # Use custom classifier
-      t: "/path/to/custom/classifier.properties"
+  classification: true
+  classification_engine: "rdp"  # "rdp" or "sintax"
+
+classification:
+  marker: "COI"
+  min_confidence: 0.8
+
+  rdp:
+    memory_gb: 20
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
+    builtin_classifier: "fungallsu"
 ```
+
+### VSEARCH SINTAX backend
+
+```yaml
+modules:
+  classification: true
+  classification_engine: "sintax"
+
+classification:
+  marker: "16S"
+  min_confidence: 0.8
+
+  sintax:
+    db_fasta: "runtime/classifiers/sintax_db.fasta"
+    cutoff: null     # defaults to min_confidence
+    threads: 4
+```
+
+Note: for SINTAX, your DB FASTA headers must contain a SINTAX taxonomy annotation like `;tax=k:...,p:...;`.
 
 ## Outputs
 
 ### Primary Outputs
-- `{dir}/rdp.out.tmp` - Raw RDP classifier output with taxonomic assignments
+- `{dir}/rdp.out.tmp` - RDP-like tabular taxonomy output (used by downstream modules)
 
 ### Checkpoints
 - `{dir}/checkpoints/classification_complete.done` - Signals completion
@@ -212,12 +217,12 @@ The module performs automatic validation:
 Common errors and solutions:
 
 ### "RDP classifier properties file not found: {path}"
-**Solution**: 
+**Solution**:
 - For custom classifiers: Verify path to `.properties` file is correct
 - For built-in classifiers: Set `RDP.custom` to "no"
 
 ### "Memory allocation error" during classification
-**Solution**: 
+**Solution**:
 - Reduce memory allocation (e.g., "10g" instead of "20g")
 - Increase available system memory
 - Reduce thread count
