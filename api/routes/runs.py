@@ -4,7 +4,7 @@ Run management routes.
 This module handles all run-related API endpoints.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
@@ -24,8 +24,13 @@ from ..schemas import (
     RunSubmissionRequest,
 )
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
-def register_run_routes(app, manager):
+    from ..job_manager import JobManager
+
+
+def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa: C901
     """Register all run-related routes with the FastAPI app."""
 
     @app.post("/runs", response_model=RunStatus)

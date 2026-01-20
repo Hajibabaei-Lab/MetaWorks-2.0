@@ -5,6 +5,7 @@ This module handles all asset-related API endpoints (classifiers, adapters).
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import File, HTTPException, UploadFile
 
@@ -12,8 +13,13 @@ from lib.exceptions import FileProcessingError
 
 from ..schemas import ListAssetsResponse, UploadResponse
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
-def register_asset_routes(app, settings):
+    from ..config import Settings
+
+
+def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
     """Register all asset-related routes with the FastAPI app."""
 
     def _save_upload(target_root: Path, file: UploadFile) -> UploadResponse:
@@ -74,7 +80,8 @@ def register_asset_routes(app, settings):
         target = settings.classifier_root / name
         if target.exists():
             target.unlink()
-        return list_classifiers()
+        items = [p.name for p in settings.classifier_root.glob("*") if p.is_file()]
+        return ListAssetsResponse(items=items)
 
     @app.post("/delete/adapters/{name}", response_model=ListAssetsResponse)
     def delete_adapter(name: str) -> ListAssetsResponse:
@@ -82,4 +89,5 @@ def register_asset_routes(app, settings):
         target = settings.adapter_root / name
         if target.exists():
             target.unlink()
-        return list_adapters()
+        items = [p.name for p in settings.adapter_root.glob("*") if p.is_file()]
+        return ListAssetsResponse(items=items)

@@ -5,6 +5,7 @@ This module handles all configuration-related API endpoints.
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 from fastapi.responses import PlainTextResponse
@@ -18,21 +19,39 @@ from ..schemas import (
     WorkflowType,
 )
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
-def register_config_routes(app, manager, settings):
+    from ..config import Settings
+    from ..job_manager import JobManager
+
+
+def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Settings") -> None:
     """Register all configuration-related routes with the FastAPI app."""
+
+    def _resolve_config_path(config_path: Path) -> Path:
+        """Resolve config path relative to repo_root when not absolute."""
+        if config_path.is_absolute():
+            return config_path
+        return settings.repo_root / config_path
 
     @app.get("/configs/defaults/{workflow}", response_class=PlainTextResponse)
     def get_default_config(workflow: WorkflowType) -> str:
         """Get default configuration for a workflow."""
         config_path = settings.default_configs.get(workflow.value)
-        if not config_path or not Path(config_path).exists():
+        if not config_path:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Default config not found for {workflow.value}",
+            )
+        resolved = _resolve_config_path(Path(config_path))
+        if not resolved.exists():
             raise HTTPException(
                 status_code=404,
                 detail=f"Default config not found for {workflow.value}",
             )
         try:
-            return Path(config_path).read_text()
+            return resolved.read_text()
         except IOError as exc:
             raise HTTPException(
                 status_code=500,

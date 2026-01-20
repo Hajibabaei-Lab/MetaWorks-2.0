@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from pydantic import Field
 
 try:  # Pydantic v2+
     from pydantic_settings import BaseSettings
 except Exception:  # pragma: no cover
-    from pydantic import BaseSettings  # type: ignore
+    from pydantic import BaseSettings
 
 
 # Resolve the repository root relative to this file so defaults work on any host path.
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
         default="docker://metaworks:latest",
         description="Default container URI or path for docker/apptainer runs.",
     )
-    bind_paths: list[str] = Field(
+    bind_paths: List[str] = Field(
         default_factory=list,
         description="Optional additional bind mounts (src:dest) appended to auto binds for container runs.",
     )

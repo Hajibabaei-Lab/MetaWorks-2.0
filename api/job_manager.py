@@ -1,3 +1,4 @@
+import logging
 import os
 import shlex
 import shutil
@@ -6,7 +7,7 @@ import subprocess
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import yaml
 
@@ -28,6 +29,8 @@ from .schemas import (
     RuntimeType,
     WorkflowType,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
@@ -138,15 +141,20 @@ class JobManager:
 
     def _dict_to_metadata(self, run_id: str, record: Dict[str, Any]) -> RunMetadata:
         """Convert dict record to RunMetadata for storage."""
+        workflow = str(record["workflow"])
+        runtime = str(record["runtime"])
+        status = str(record["status"])
+        submitted_at = str(record["submitted_at"])
+        run_dir = str(record["run_dir"])
         return RunMetadata(
             run_id=run_id,
-            workflow=record.get("workflow"),
-            runtime=record.get("runtime"),
-            status=record.get("status"),
-            submitted_at=record.get("submitted_at"),
+            workflow=workflow,
+            runtime=runtime,
+            status=status,
+            submitted_at=submitted_at,
             started_at=record.get("started_at"),
             ended_at=record.get("ended_at"),
-            run_dir=record.get("run_dir"),
+            run_dir=run_dir,
             run_name=record.get("run_name"),
             sample_source=record.get("sample_source"),
             config_overrides=record.get("config_overrides"),
@@ -200,19 +208,31 @@ class JobManager:
                 config_key=f"default_configs.{workflow.value}",
                 suggestion="Check settings.default_configs configuration",
             )
+        config_path = Path(path)
+        if not config_path.is_absolute():
+            config_path = settings.repo_root / config_path
         try:
-            with Path(path).open() as fh:
-                return yaml.safe_load(fh)
+            with config_path.open() as fh:
+                loaded = yaml.safe_load(fh)
+                if loaded is None:
+                    return {}
+                if not isinstance(loaded, dict):
+                    raise ConfigurationError(
+                        f"Config file did not parse to a mapping: {config_path}",
+                        filepath=str(config_path),
+                        suggestion="Ensure the top-level YAML value is a mapping/object",
+                    )
+                return cast(Dict[str, Any], loaded)
         except yaml.YAMLError as exc:
             raise ConfigurationError(
                 f"Invalid YAML in config file: {path}",
-                filepath=str(path),
-                suggestion=f"Fix YAML syntax in {path}",
+                filepath=str(config_path),
+                suggestion=f"Fix YAML syntax in {config_path}",
             ) from exc
         except FileNotFoundError as exc:
             raise ConfigurationError(
                 f"Config file not found: {path}",
-                filepath=str(path),
+                filepath=str(config_path),
                 suggestion="Verify config file path in settings",
             ) from exc
 
@@ -235,6 +255,63 @@ class JobManager:
         config_path.write_text(rendered.merged)
         return config_path
 
+    def _stage_run_support_files(self, run_dir: Path) -> None:
+        """
+        Stage repo-relative resources into the run directory.
+
+        The Snakemake runner uses `--directory <run_dir>`, so many workflow paths
+        like `python_scripts/...`, `config/...`, or `tests/...` must exist
+        relative to `run_dir`.
+        """
+
+        repo_root = settings.repo_root
+
+        def _copytree_if_missing(src: Path, dest: Path) -> None:
+            if dest.exists() or dest.is_symlink():
+                return
+            if not src.exists():
+                return
+            shutil.copytree(src, dest)
+
+        def _copyfile_if_missing(src: Path, dest: Path) -> None:
+            if dest.exists() or dest.is_symlink():
+                return
+            if not src.exists():
+                return
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+
+        # Scripts referenced as `python3 python_scripts/<script>.py` in many rules.
+        _copytree_if_missing(repo_root / "python_scripts", run_dir / "python_scripts")
+
+        # Config resources referenced as `config/...` (e.g. HMM profiles).
+        _copytree_if_missing(repo_root / "config", run_dir / "config")
+
+        # Default adapter file referenced as `tests/adapters_anchored.fasta`.
+        _copyfile_if_missing(
+            repo_root / "tests" / "adapters_anchored.fasta",
+            run_dir / "tests" / "adapters_anchored.fasta",
+        )
+
+        # Runtime-managed assets referenced as `runtime/classifiers/...` or `runtime/adapters/...`.
+        # Prefer symlinks (so uploads remain visible), fall back to copying if needed.
+        runtime_dir = run_dir / "runtime"
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+
+        def _symlink_or_copy_dir(src: Path, dest: Path) -> None:
+            if dest.exists() or dest.is_symlink():
+                return
+            if not src.exists():
+                return
+            try:
+                rel_target = os.path.relpath(src.resolve(), start=dest.parent.resolve())
+                dest.symlink_to(rel_target, target_is_directory=True)
+            except Exception:
+                shutil.copytree(src, dest)
+
+        _symlink_or_copy_dir(settings.classifier_root, runtime_dir / "classifiers")
+        _symlink_or_copy_dir(settings.adapter_root, runtime_dir / "adapters")
+
     def submit_run(self, submission: RunSubmissionRequest) -> RunStatus:
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         run_id = f"{submission.workflow.value}-{timestamp}"
@@ -250,6 +327,15 @@ class JobManager:
             ) from exc
 
         try:
+            self._stage_run_support_files(run_dir)
+        except OSError as exc:
+            raise FileProcessingError(
+                f"Failed to stage run support files into: {run_dir}",
+                filepath=str(run_dir),
+                suggestion="Check permissions and available disk space",
+            ) from exc
+
+        try:
             runtime = submission.runtime or RuntimeType(settings.default_runtime)
         except ValueError as exc:
             raise ConfigurationError(
@@ -260,7 +346,7 @@ class JobManager:
         submission = submission.copy(update={"runtime": runtime})
 
         # Record run metadata early
-        record = {
+        record: Dict[str, Any] = {
             "run_id": run_id,
             "workflow": submission.workflow.value,
             "runtime": runtime.value,
@@ -309,11 +395,11 @@ class JobManager:
     def _watch_process(self, run_id: str, process: subprocess.Popen) -> None:
         """Wait for a process and update run metadata."""
         return_code = process.wait()
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             return
-        record = self._metadata_to_dict(record)
-        record["return_code"] = return_code
+        record = self._metadata_to_dict(metadata)
+        record["return_code"] = int(return_code)
         record["ended_at"] = datetime.utcnow().isoformat()
         record["status"] = "completed" if return_code == 0 else "failed"
         record["message"] = (
@@ -322,14 +408,14 @@ class JobManager:
         self._set_metadata(run_id, record)
 
     def get_status(self, run_id: str) -> RunStatus:
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             raise StateManagementError(
                 f"Unknown run_id {run_id}",
                 run_id=run_id,
                 suggestion="Check run ID or list all runs",
             )
-        record = self._metadata_to_dict(record)
+        record = self._metadata_to_dict(metadata)
         # Refresh status if process ended since last check.
         if record.get("status") == "running" and record.get("pid"):
             pid = int(record["pid"])
@@ -341,14 +427,14 @@ class JobManager:
         return RunStatus(**record)
 
     def cancel_run(self, run_id: str) -> RunStatus:
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             raise StateManagementError(
                 f"Unknown run_id {run_id}",
                 run_id=run_id,
                 suggestion="Check run ID or list all runs",
             )
-        record = self._metadata_to_dict(record)
+        record = self._metadata_to_dict(metadata)
         pid = record.get("pid")
         if pid:
             try:
@@ -378,14 +464,14 @@ class JobManager:
         return True
 
     def tail_logs(self, run_id: str, lines: Optional[int] = None) -> Dict[str, Any]:
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             raise StateManagementError(
                 f"Unknown run_id {run_id}",
                 run_id=run_id,
                 suggestion="Check run ID or list all runs",
             )
-        record = self._metadata_to_dict(record)
+        record = self._metadata_to_dict(metadata)
         run_dir = Path(record["run_dir"])
         log_dir = run_dir / "logs"
         target_log = Path(record.get("log_path") or (log_dir / "snakemake.log"))
@@ -404,14 +490,14 @@ class JobManager:
             ) from exc
 
     def package_artifacts(self, run_id: str) -> ArtifactResponse:
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             raise StateManagementError(
                 f"Unknown run_id {run_id}",
                 run_id=run_id,
                 suggestion="Check run ID or list all runs",
             )
-        record = self._metadata_to_dict(record)
+        record = self._metadata_to_dict(metadata)
         run_dir = Path(record["run_dir"])
         archive_path = settings.artifact_root / f"{run_id}.tar.gz"
 
@@ -426,8 +512,7 @@ class JobManager:
 
         try:
             subprocess.run(
-                f"tar -czf {archive_path} -C {run_dir} .",
-                shell=True,
+                ["tar", "-czf", str(archive_path), "-C", str(run_dir), "."],
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
@@ -442,20 +527,20 @@ class JobManager:
         return ArtifactResponse(run_id=run_id, archive_path=str(archive_path))
 
     def delete_run(self, run_id: str) -> Dict[str, Any]:
-        record = self._get_metadata(run_id)
-        if not record:
+        metadata = self._get_metadata(run_id)
+        if not metadata:
             raise StateManagementError(
                 f"Unknown run_id {run_id}",
                 run_id=run_id,
                 suggestion="Check run ID or list all runs",
             )
-        record = self._metadata_to_dict(record)
+        record = self._metadata_to_dict(metadata)
 
         # Best-effort cancel before deleting (even if status is stale).
         try:
             self.cancel_run(run_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Best-effort cancel failed for %s: %s", run_id, exc)
 
         removed: List[str] = []
 
@@ -488,31 +573,31 @@ class JobManager:
         run_dir = Path(record["run_dir"])
         try:
             _safe_remove(run_dir, settings.run_root)
-        except Exception:
+        except Exception as exc:
             # If the configured run_dir is nested under run_root, also clean .snakemake within it if present
-            pass
+            logger.debug("Best-effort run_dir removal failed for %s: %s", run_dir, exc)
 
         # Remove embedded .snakemake if under run_root/run_id
         snakemake_dir = run_dir / ".snakemake"
         try:
             _safe_remove(snakemake_dir, settings.run_root)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Best-effort snakemake dir removal failed for %s: %s", snakemake_dir, exc)
 
         archive_path = record.get("artifact_path")
         if archive_path:
             try:
                 _safe_remove(Path(archive_path), settings.artifact_root)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Best-effort archive removal failed for %s: %s", archive_path, exc)
 
         # Clean up any stray Snakemake cache under repo_root if no runs remain.
         try:
             if not self._all_runs():
                 repo_snakemake = settings.repo_root / ".snakemake"
                 _safe_remove(repo_snakemake, settings.repo_root)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Best-effort repo snakemake removal failed: %s", exc)
 
         self._delete_run_state(run_id)
         return {"run_id": run_id, "removed_paths": removed}

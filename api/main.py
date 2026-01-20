@@ -68,8 +68,15 @@ assets.register_asset_routes(app, settings)
 
 
 # Mount UI static files
+# Check for Vue build output first, then fall back to old UI
+ui_dist = Path(__file__).resolve().parent.parent / "ui" / "dist"
 ui_path = Path(__file__).resolve().parent.parent / "ui"
-if ui_path.exists():
+
+if ui_dist.exists():
+    # Serve Vue build output (modern UI)
+    app.mount("/", StaticFiles(directory=ui_dist, html=True), name="ui")
+elif ui_path.exists():
+    # Fall back to old UI if build output doesn't exist
     app.mount("/", StaticFiles(directory=ui_path, html=True), name="ui")
 
 

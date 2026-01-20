@@ -92,6 +92,12 @@ class RunStatus(BaseModel):
     workflow: WorkflowType
     runtime: RuntimeType
     status: str
+    run_name: Optional[str] = None
+    sample_source: Optional[str] = None
+    input_dir: Optional[str] = None
+    samples_csv: Optional[str] = None
+    notes: Optional[str] = None
+    config_overrides: Optional[Dict[str, Any]] = None
     scheduler_job_id: Optional[str] = None
     submitted_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
