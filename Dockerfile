@@ -26,4 +26,3 @@ WORKDIR /MetaWorks
 COPY . /MetaWorks
 
 CMD ["/bin/bash", "-l"]
-
