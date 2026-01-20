@@ -195,7 +195,7 @@ See [Module Standards](docs/MODULE_STANDARDS.md) for guidance on creating new pi
 
 ## License
 
-[Specify your license here]
+GNU General Public License v3.0
 
 ## Citation
 
