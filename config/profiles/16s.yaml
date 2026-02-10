@@ -1,0 +1,22 @@
+# 16S Microbiome Profile
+# For bacterial and archaeal community analysis
+# Uses built-in RDP classifier (no custom classifier needed)
+
+profile:
+  name: "16s"
+  description: "16S rRNA metabarcoding for bacteria and archaea"
+  marker: "16S"
+
+# Classification settings for 16S
+classification:
+  marker: "16S"
+  rdp:
+    use_custom_classifier: false
+    classifier_path: null
+    builtin_classifier: "fungallsu"
+
+# Pseudogene filtering typically not used for 16S
+# Users can enable it manually if needed
+pseudogene_filtering:
+  method: "orf"  # ORF-based filtering for 16S
+  genetic_code: 11  # Bacterial
