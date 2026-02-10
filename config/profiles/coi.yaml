@@ -1,0 +1,28 @@
+# COI Arthropod Profile
+# For metabarcoding of invertebrates (insects, crustaceans, etc.)
+# Uses invertebrate mitochondrial genetic code
+
+profile:
+  name: "coi"
+  description: "COI metabarcoding for arthropods and invertebrates"
+  marker: "COI"
+
+# Classification settings for COI
+classification:
+  marker: "COI"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
+
+# Pseudogene filtering optimized for COI arthropods
+pseudogene_filtering:
+  method: "hmm"
+  grep_type: 1
+  taxon1: "-e Arthropoda"
+  taxon2: "-v Chordata"
+  hmm_profile: "config/hmm/bold.hmm"
+  genetic_code: 5  # Invertebrate mitochondrial
+  orf_start_codon: 2
+  min_orf_length: 30
+  ignore_nested_orfs: true
+  strand: "plus"

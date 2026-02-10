@@ -1,0 +1,21 @@
+# ITS Fungi Profile
+# For fungal community analysis
+# Uses built-in RDP classifier with UNITE database
+
+profile:
+  name: "its"
+  description: "ITS metabarcoding for fungi"
+  marker: "ITS_fungi"
+
+# Classification settings for ITS
+classification:
+  marker: "ITS_fungi"
+  rdp:
+    use_custom_classifier: false
+    classifier_path: null
+    builtin_classifier: "fungalits_unite"
+
+# Pseudogene filtering not typically used for ITS
+# ITS is non-coding, so pseudogene filtering is not applicable
+pseudogene_filtering:
+  method: null
