@@ -1,16 +1,5 @@
 # rules/results.smk
-
-# Helper function to safely get module config
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values"""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    # Fallback to top-level config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
+# Uses shared helpers from modules/common.smk (get_module_config, is_module_enabled).
 
 PSEUDOGENE_CONFIG = get_module_config(config, "pseudogene_filtering")
 CLASSIFICATION_CONFIG = get_module_config(config, "classification")
@@ -23,7 +12,10 @@ def header_value(config):
     return ""
 
 # Check if pseudogene filtering is enabled
-pseudogene_enabled = PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]
+pseudogene_enabled = (
+    is_module_enabled(config, "pseudogene_filtering", default=True)
+    and PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]
+)
 
 if pseudogene_enabled:
 

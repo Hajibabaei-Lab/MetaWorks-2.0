@@ -1,21 +1,9 @@
 # rules/orfs_hmm.smk
+# Loaded as a Snakemake module from pseudogene.smk.
+# Receives config with "dir" and "pseudogene_filtering" keys.
 
-# Get output directory from module config
 OUTPUT_DIR = config.get("dir", "")
-
-# Helper function to safely get module config
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values"""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    # Fallback to top-level config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
-
-PSEUDOGENE_CONFIG = get_module_config(config, "pseudogene_filtering")
+PSEUDOGENE_CONFIG = config.get("pseudogene_filtering", {})
 
 rule get_orfs_nt_hmm:
     input: OUTPUT_DIR + "/chimera.denoised.nonchimeras.taxon"
@@ -26,6 +14,10 @@ rule get_orfs_nt_hmm:
         ml=lambda wc: PSEUDOGENE_CONFIG.get("min_orf_length", 30),
         n=lambda wc: str(PSEUDOGENE_CONFIG.get("ignore_nested_orfs", True)).lower(),
         strand=lambda wc: PSEUDOGENE_CONFIG.get("strand", "plus")
+    threads: 1
+    resources:
+        mem_mb = 2000,
+        time_min = 30
     shell:
         """
         ORFfinder -in {input} \
@@ -46,6 +38,10 @@ rule get_orfs_aa_hmm:
         ml=lambda wc: PSEUDOGENE_CONFIG.get("min_orf_length", 30),
         n=lambda wc: str(PSEUDOGENE_CONFIG.get("ignore_nested_orfs", True)).lower(),
         strand=lambda wc: PSEUDOGENE_CONFIG.get("strand", "plus")
+    threads: 1
+    resources:
+        mem_mb = 2000,
+        time_min = 30
     shell:
         """
         ORFfinder -in {input} \
@@ -64,5 +60,9 @@ rule consolidate_orfs_hmm:
     output:
         nt2 = OUTPUT_DIR + "/orfs.fasta.nt.filtered.hmm",
         aa2 = OUTPUT_DIR + "/orfs.fasta.aa.filtered.hmm"
+    threads: 1
+    resources:
+        mem_mb = 1000,
+        time_min = 10
     shell:
         "python3 python_scripts/parse_orfs4.py {input.nt} {input.aa} {output.nt2} {output.aa2}"

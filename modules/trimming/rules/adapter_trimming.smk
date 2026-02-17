@@ -1,16 +1,5 @@
 # rules/adapter_trimming.smk
-
-# Helper function to safely get module config
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values"""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    # Fallback to top-level config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
+# Uses shared helpers from modules/common.smk (get_module_config).
 
 TRIMMING_CONFIG = get_module_config(config, "trimming")
 PREPROCESSING_CONFIG = get_module_config(config, "preprocessing")
@@ -28,6 +17,14 @@ rule pair_reads:
         o = lambda wc: PREPROCESSING_CONFIG.get("min_overlap", 25),
         m = lambda wc: PREPROCESSING_CONFIG.get("max_mismatch", 0.02),
         n = lambda wc: PREPROCESSING_CONFIG.get("min_match", 0.90)
+    threads: 1
+    resources:
+        mem_mb = 2000,
+        time_min = 30
+    log:
+        config["pipeline"]["output_dir"] + "/logs/pairing/{sample}.log"
+    benchmark:
+        config["pipeline"]["output_dir"] + "/benchmarks/pairing/{sample}.txt"
     shell:
         """
         SeqPrep \
@@ -39,7 +36,8 @@ rule pair_reads:
             -o {params.o} \
             -m {params.m} \
             -n {params.n} \
-            -s {output.s}
+            -s {output.s} \
+            2>&1 | tee {log}
         """
 
 rule trim_linked_adapters:
@@ -55,6 +53,14 @@ rule trim_linked_adapters:
         O = lambda wc: TRIMMING_CONFIG.get("min_adapter_overlap", 3),
         mn = lambda wc: TRIMMING_CONFIG.get("max_n_bases", 3),
         rc = lambda wc: "--revcomp" if TRIMMING_CONFIG.get("enable_rc", False) else ""
+    threads: 1
+    resources:
+        mem_mb = 4000,
+        time_min = 60
+    log:
+        config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.log"
+    benchmark:
+        config["pipeline"]["output_dir"] + "/benchmarks/trimming/{sample}.txt"
     shell:
         """
         cutadapt \
@@ -68,7 +74,8 @@ rule trim_linked_adapters:
             --prefix {{name}} \
             --discard-untrimmed \
             --output {output} \
-            {input.paired}
+            {input.paired} \
+            2>&1 | tee {log}
         """
 
 rule gzip_trimmed_fasta:
@@ -76,5 +83,11 @@ rule gzip_trimmed_fasta:
         config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
     output:
         config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
+    threads: 1
+    resources:
+        mem_mb = 1000,
+        time_min = 10
+    log:
+        config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.gzip.log"
     shell:
-        "gzip -c {input} > {output}"
+        "gzip -c {input} > {output} 2> {log}"

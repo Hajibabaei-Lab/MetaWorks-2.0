@@ -76,8 +76,3 @@ rule cat_trimmed_stats_add_headers:
     input: config["pipeline"]["output_dir"] + "/stats/trimmed.stats.tmp"
     output: config["pipeline"]["output_dir"] + "/stats/trimmed.stats"
     shell: "printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
-
-rule edit_fasta_header1:
-    input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
-    output: temp(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp")
-    shell: "python3 python_scripts/rename_fasta_gzip.py {input} > {output}"
