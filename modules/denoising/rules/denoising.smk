@@ -1,18 +1,12 @@
 # rules/denoising.smk
-
-# Helper function to safely get module config
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values"""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    # Fallback to top-level config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
+# Uses shared helpers from modules/common.smk (get_module_config).
 
 DENOISING_CONFIG = get_module_config(config, "denoising")
+
+rule edit_fasta_header1:
+    input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
+    output: temp(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp")
+    shell: "python3 python_scripts/rename_fasta_gzip.py {input} > {output}"
 
 # Global pooling path
 if DENOISING_CONFIG.get("pool_samples", True):
@@ -22,6 +16,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             expand(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp", sample=SAMPLES_UNIQUE)
         output:
             temp(config["pipeline"]["output_dir"] + "/cat.fasta.tmp")
+        threads: 1
+        resources:
+            mem_mb = 2000,
+            time_min = 10
         shell:
             "cat {input} > {output}"
 
@@ -38,6 +36,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             config["pipeline"]["output_dir"] + "/cat.fasta"
         output:
             config["pipeline"]["output_dir"] + "/cat.fasta.gz"
+        threads: 1
+        resources:
+            mem_mb = 1000,
+            time_min = 5
         shell:
             "gzip -c {input} > {output}"
 
@@ -46,6 +48,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             config["pipeline"]["output_dir"] + "/cat.fasta.gz"
         output:
             config["pipeline"]["output_dir"] + "/cat.uniques"
+        threads: 1
+        resources:
+            mem_mb = 4000,
+            time_min = 30
         log:
             config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
@@ -56,6 +62,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             config["pipeline"]["output_dir"] + "/cat.uniques"
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised"
+        threads: 1
+        resources:
+            mem_mb = 4000,
+            time_min = 60
         log:
             config["pipeline"]["output_dir"] + "/denoising.log"
         params:
@@ -68,6 +78,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             config["pipeline"]["output_dir"] + "/cat.denoised"
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+        threads: 1
+        resources:
+            mem_mb = 4000,
+            time_min = 45
         log:
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
@@ -80,6 +94,9 @@ if DENOISING_CONFIG.get("pool_samples", True):
         output:
             temp(config["pipeline"]["output_dir"] + "/ESV.table.tmp")
         threads: DENOISING_CONFIG.get("threads", 4)
+        resources:
+            mem_mb = 6000,
+            time_min = 60
         log:
             config["pipeline"]["output_dir"] + "/table.log"
         shell:
@@ -102,7 +119,10 @@ else:
             config["pipeline"]["output_dir"] + "/{sample}.tagged"
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp")
-        threads:4
+        threads: 4
+        resources:
+            mem_mb = 2000,
+            time_min = 20
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout"
 
@@ -111,9 +131,12 @@ else:
             config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp"
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.denoised")
+        threads: 4
+        resources:
+            mem_mb = 2000,
+            time_min = 30
         log:
             config["pipeline"]["output_dir"] + "/logs/{sample}.denoising.log"
-        threads:4
         params:
             minsize = DENOISING_CONFIG.get("min_cluster_size", 8)
         shell:
@@ -125,6 +148,9 @@ else:
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
         threads: 4
+        resources:
+            mem_mb = 2000,
+            time_min = 10
         shell:
             "cat {input} > {output}"
 
@@ -133,9 +159,12 @@ else:
             config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
         output:
             config["pipeline"]["output_dir"] + "/cat.uniques"
+        threads: 4
+        resources:
+            mem_mb = 4000,
+            time_min = 30
         log:
             config["pipeline"]["output_dir"] + "/dereplication.log"
-        threads:4
         shell:
             "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
 
@@ -144,6 +173,10 @@ else:
             config["pipeline"]["output_dir"] + "/cat.uniques"
         output:
             config["pipeline"]["output_dir"] + "/cat.uniques.gz"
+        threads: 1
+        resources:
+            mem_mb = 1000,
+            time_min = 5
         shell:
             "gzip -c {input} > {output}"
 
@@ -152,9 +185,12 @@ else:
             config["pipeline"]["output_dir"] + "/cat.uniques.gz"
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+        threads: 4
+        resources:
+            mem_mb = 4000,
+            time_min = 45
         log:
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
-        threads:4
         shell:
             "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
 
@@ -165,6 +201,9 @@ else:
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp")
         threads: DENOISING_CONFIG.get("threads", 4)
+        resources:
+            mem_mb = 2000,
+            time_min = 30
         log:
             config["pipeline"]["output_dir"] + "/{sample}.table.log"
         shell:
@@ -175,5 +214,9 @@ else:
             esv_tables = expand(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp", sample=SAMPLES_UNIQUE)
         output:
             config["pipeline"]["output_dir"] + "/ESV.table.tmp"
+        threads: 1
+        resources:
+            mem_mb = 2000,
+            time_min = 15
         shell:
             "python3 python_scripts/merge_esv_tables.py {input.esv_tables} > {output}"

@@ -1,32 +1,31 @@
 # rules/pseudogene.smk
-
-# Helper function to safely get module config
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values"""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    # Fallback to top-level config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
+# Uses shared helpers from modules/common.smk (get_module_config, is_module_enabled).
 
 PSEUDOGENE_CONFIG = get_module_config(config, "pseudogene_filtering")
-
-# Get classification config for marker
 CLASSIFICATION_CONFIG = get_module_config(config, "classification")
 
-# Module declarations for ORF processing
+# Pass pseudogene_filtering config through to ORF submodules so user params
+# (genetic_code, min_orf_length, etc.) are actually used.
 module orfs_hmm:
     snakefile: "orfs_hmm.smk"
-    config: {"dir": config["pipeline"]["output_dir"]}
+    config: {
+        "dir": config["pipeline"]["output_dir"],
+        "pseudogene_filtering": config.get("pseudogene_filtering", {}),
+    }
 
 module orfs_longest:
     snakefile: "orfs_longest.smk"
-    config: {"dir": config["pipeline"]["output_dir"]}
+    config: {
+        "dir": config["pipeline"]["output_dir"],
+        "pseudogene_filtering": config.get("pseudogene_filtering", {}),
+    }
 
-if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
+pseudogene_enabled = (
+    is_module_enabled(config, "pseudogene_filtering", default=True)
+    and PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]
+)
+
+if pseudogene_enabled:
 
     ############################
     # Taxon Subsetting
@@ -38,6 +37,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             output: config["pipeline"]["output_dir"] + "/taxon.zotus"
             params:
                 taxon1 = PSEUDOGENE_CONFIG.get("taxon1", "")
+            resources:
+                mem_mb = 1000,
+                time_min = 5
             shell:
                 "grep {params.taxon1} {input} | awk '{{print $1}}' > {output}"
     else:
@@ -47,6 +49,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             params:
                 taxon1 = PSEUDOGENE_CONFIG.get("taxon1", ""),
                 taxon2 = PSEUDOGENE_CONFIG.get("taxon2", "")
+            resources:
+                mem_mb = 1000,
+                time_min = 5
             shell:
                 "grep {params.taxon1} {input} | grep {params.taxon2} | awk '{{print $1}}' > {output}"
 
@@ -55,6 +60,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             tax = config["pipeline"]["output_dir"] + "/taxon.zotus",
             fas = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output: config["pipeline"]["output_dir"] + "/chimera.denoised.nonchimeras.taxon"
+        resources:
+            mem_mb = 2000,
+            time_min = 10
         shell:
             "python3 python_scripts/get_taxon_only.py {input.tax} {input.fas} > {output}"
 
@@ -73,6 +81,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
             params:
                 marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            resources:
+                mem_mb = 2000,
+                time_min = 15
             shell:
                 "python3 python_scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
 
@@ -81,6 +92,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
                 table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
                 orf = config["pipeline"]["output_dir"] + "/longest.orfs.fasta"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
+            resources:
+                mem_mb = 2000,
+                time_min = 10
             shell:
                 "python3 python_scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
 
@@ -89,6 +103,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
                 orf = config["pipeline"]["output_dir"] + "/longest.orfs.fasta",
                 rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp"
             output: temp(config["pipeline"]["output_dir"] + "/taxonomy_ORF.tsv")
+            resources:
+                mem_mb = 1000,
+                time_min = 5
             shell:
                 "python3 python_scripts/add_seqs_to_tax4.py {input.orf} {input.rdp} >> {output}"
 
@@ -106,6 +123,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
                 orf = config["pipeline"]["output_dir"] + "/orfs.fasta.aa.filtered.hmm",
                 hmm = PSEUDOGENE_CONFIG.get("hmm_profile", "config/hmm/bold.hmm")
             output: config["pipeline"]["output_dir"] + "/hmm.txt"
+            resources:
+                mem_mb = 2000,
+                time_min = 45
             shell:
                 "hmmscan --tblout {output} {input.hmm} {input.orf}"
 
@@ -117,6 +137,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             output: config["pipeline"]["output_dir"] + "/taxonomy_ORF.tsv"
             params:
                 marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            resources:
+                mem_mb = 1000,
+                time_min = 10
             shell:
                 "python3 python_scripts/filter_rdp.py {input.hmmer} {input.orfs} {input.rdp} {params.marker} >> {output}"
 
@@ -127,6 +150,9 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
             output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
             params:
                 marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            resources:
+                mem_mb = 2000,
+                time_min = 15
             shell:
                 "python3 python_scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
 
@@ -135,8 +161,34 @@ if PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]:
                 table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
                 orf = config["pipeline"]["output_dir"] + "/orfs.fasta.nt.filtered.hmm"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
+            resources:
+                mem_mb = 2000,
+                time_min = 10
             shell:
                 "python3 python_scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
 
     else:
-        print("ERROR: Invalid or missing 'method' in pseudogene_filtering config. Expected 'hmm' or 'orf'")
+        raise ValueError(
+            f"Invalid pseudogene_filtering.method: {PSEUDOGENE_CONFIG.get('method')!r}. "
+            "Expected 'hmm' or 'orf'."
+        )
+else:
+    rule copy_unfiltered_taxonomy:
+        input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
+        output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
+        params:
+            marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+        resources:
+            mem_mb = 1000,
+            time_min = 5
+        shell:
+            "python3 python_scripts/filter_rdp_taxonomy.py {input} {input} {params.marker} > {output}"
+
+    rule copy_unfiltered_esv_table:
+        input: config["pipeline"]["output_dir"] + "/ESV.table.tmp"
+        output: config["pipeline"]["output_dir"] + "/ESV.table"
+        resources:
+            mem_mb = 1000,
+            time_min = 5
+        shell:
+            "cp {input} {output}"

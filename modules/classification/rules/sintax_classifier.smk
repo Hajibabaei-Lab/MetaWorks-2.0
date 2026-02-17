@@ -2,20 +2,9 @@
 #
 # Produces MetaWorks' RDP-like `rdp.out.tmp` so downstream modules (pseudogene, results)
 # continue to work unchanged.
+# Uses shared helpers from modules/common.smk (get_module_config).
+# CLASSIFICATION_CONFIG is set by the parent classifier.smk.
 
-
-def get_module_config(config, module_name):
-    """Safely get module configuration, handling boolean values."""
-    modules = config.get("modules", {})
-    if isinstance(modules, dict):
-        module_config = modules.get(module_name, {})
-        if isinstance(module_config, dict):
-            return module_config
-    fallback = config.get(module_name, {})
-    return fallback if isinstance(fallback, dict) else {}
-
-
-CLASSIFICATION_CONFIG = get_module_config(config, "classification")
 SINTAX_CONFIG = CLASSIFICATION_CONFIG.get("sintax", {}) if isinstance(CLASSIFICATION_CONFIG.get("sintax", {}), dict) else {}
 
 db_fasta = SINTAX_CONFIG.get("db_fasta")
@@ -39,6 +28,11 @@ rule taxonomic_assignment:
         raw = temp(config["pipeline"]["output_dir"] + "/sintax.out.tmp"),
         rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp"
     threads: threads
+    resources:
+        mem_mb = 8000,
+        time_min = 120
+    log:
+        config["pipeline"]["output_dir"] + "/logs/classification.log"
     params:
         db = db_fasta,
         cutoff = cutoff,
