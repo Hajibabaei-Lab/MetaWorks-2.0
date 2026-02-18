@@ -90,45 +90,39 @@ class ModuleMetadata(BaseModel):
     enabled_by_default: Optional[bool] = True
 
 
-class ModuleParameters(BaseModel):
-    parameters: Dict[str, Any]
+class ModuleValidationRule(BaseModel):
+    parameter: str
+    type: str
+    min: Optional[float] = None
+    max: Optional[float] = None
+    allowed: Optional[List[Any]] = None
+    description: Optional[str] = None
 
 
-class ModuleFiles(BaseModel):
-    files: Dict[str, List[Dict[str, str]]]
-
-
-class ModuleSoftware(BaseModel):
-    software: Dict[str, List[str]]
-
-
-class ModuleValidation(BaseModel):
-    validation: List[Dict[str, Any]]
-
-
-class ModuleResources(BaseModel):
-    resources: Dict[str, Dict[str, int]]
-
-
-class ModuleDependencies(BaseModel):
-    depends_on: List[str] = []
-
-
-class ModuleCheckpoints(BaseModel):
-    checkpoints: List[Dict[str, str]]
+class ModuleCheckpoint(BaseModel):
+    name: str
+    trigger: str
+    output: str
 
 
 class ModuleConfig(BaseModel):
-    """Module configuration schema."""
+    """Module registry entry schema."""
 
     module: ModuleMetadata
-    parameters: ModuleParameters
-    files: Optional[ModuleFiles] = None
-    software: Optional[ModuleSoftware] = None
-    validation: Optional[ModuleValidation] = None
-    resources: Optional[ModuleResources] = None
-    depends_on: List[str] = []
-    checkpoints: Optional[ModuleCheckpoints] = None
+    directory: Optional[str] = None
+    snakefile: Optional[str] = None
+    config_section: Optional[str] = None
+    compatible_workflows: List[str] = Field(default_factory=list)
+    backend_variants: List[str] = Field(default_factory=list)
+    internal: bool = False
+    terminal_outputs: List[str] = Field(default_factory=list)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    files: Optional[Dict[str, List[Dict[str, str]]]] = None
+    software: Optional[Dict[str, List[str]]] = None
+    validation: List[ModuleValidationRule] = Field(default_factory=list)
+    resources: Optional[Dict[str, Dict[str, int]]] = None
+    depends_on: List[str] = Field(default_factory=list)
+    checkpoints: List[ModuleCheckpoint] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -303,12 +297,5 @@ class UserConfig(BaseModel):
 # ============================================================================
 
 
-class MergedConfig(BaseModel):
-    """Complete merged configuration."""
-
-    system: SystemConfig
-    modules: Dict[str, ModuleConfig]
-    user: UserConfig
-
-    class Config:
-        arbitrary_types_allowed = True
+class MergedConfig(UserConfig):
+    """Complete merged runtime configuration exported for Snakemake."""
