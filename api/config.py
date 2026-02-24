@@ -67,7 +67,15 @@ class Settings(BaseSettings):
         description="If False, scheduler submit is dry-run and only records the command.",
     )
     default_runtime: str = Field(
-        default="conda", description="Default runtime if not provided (conda|docker|apptainer)."
+        default="docker", description="Default runtime if not provided (conda|docker|apptainer)."
+    )
+    allowed_runtimes: str = Field(
+        default="docker,apptainer",
+        description="Comma-separated runtimes allowed for web submissions.",
+    )
+    retention_policy: str = Field(
+        default="until_download",
+        description="Run data retention mode: until_download|immediate|manual.",
     )
     container_image: str = Field(
         default="docker://metaworks:latest",

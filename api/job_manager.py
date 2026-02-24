@@ -7,10 +7,11 @@ import subprocess
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 import yaml
 
+from lib.config import ConfigManager
 from lib.exceptions import (
     ConfigurationError,
     FileProcessingError,
@@ -161,6 +162,7 @@ class JobManager:
             input_dir=record.get("input_dir"),
             samples_csv=record.get("samples_csv"),
             notes=record.get("notes"),
+            keep_outputs=record.get("keep_outputs"),
             pid=record.get("pid"),
             log_path=record.get("log_path"),
             command=record.get("command"),
@@ -200,57 +202,61 @@ class JobManager:
         """Delete run from state store."""
         self._state_store.delete_run(run_id)
 
-    def _load_default_config(self, workflow: WorkflowType) -> Dict[str, Any]:
-        path = settings.default_configs.get(workflow.value)
-        if not path:
-            raise ConfigurationError(
-                f"No default config registered for workflow {workflow}",
-                config_key=f"default_configs.{workflow.value}",
-                suggestion="Check settings.default_configs configuration",
-            )
-        config_path = Path(path)
-        if not config_path.is_absolute():
-            config_path = settings.repo_root / config_path
+    def _get_config_manager(self) -> ConfigManager:
+        """Get a ConfigManager instance for building run configs."""
+        return ConfigManager(repo_root=str(settings.repo_root))
+
+    def render_config_with_profile(
+        self, 
+        profile: str, 
+        workflow: WorkflowType, 
+        overrides: Dict[str, Any]
+    ) -> RenderConfigResponse:
+        """Render configuration using profile, workflow, and user overrides."""
         try:
-            with config_path.open() as fh:
-                loaded = yaml.safe_load(fh)
-                if loaded is None:
-                    return {}
-                if not isinstance(loaded, dict):
-                    raise ConfigurationError(
-                        f"Config file did not parse to a mapping: {config_path}",
-                        filepath=str(config_path),
-                        suggestion="Ensure the top-level YAML value is a mapping/object",
-                    )
-                return cast(Dict[str, Any], loaded)
-        except yaml.YAMLError as exc:
+            config_manager = self._get_config_manager()
+            config_manager.load_defaults_config()
+            config_manager.load_module_configs()
+            config_manager.load_profile(profile)
+            
+            if overrides:
+                config_manager.user_config = dict(overrides)
+            
+            config_manager.merge(workflow=workflow.value)
+            merged_dict = config_manager.export_for_workflow(workflow.value)
+            rendered = yaml.safe_dump(merged_dict, sort_keys=False)
+            
+            return RenderConfigResponse(workflow=workflow, merged=rendered)
+        except Exception as exc:
             raise ConfigurationError(
-                f"Invalid YAML in config file: {path}",
-                filepath=str(config_path),
-                suggestion=f"Fix YAML syntax in {config_path}",
-            ) from exc
-        except FileNotFoundError as exc:
-            raise ConfigurationError(
-                f"Config file not found: {path}",
-                filepath=str(config_path),
-                suggestion="Verify config file path in settings",
+                f"Failed to render config: {str(exc)}",
+                config_key="render",
+                suggestion="Check profile name and overrides",
             ) from exc
 
     def render_config(
         self, workflow: WorkflowType, overrides: Dict[str, Any]
     ) -> RenderConfigResponse:
-        base_config = self._load_default_config(workflow)
-        merged = _deep_merge(base_config, overrides or {})
-        rendered = yaml.safe_dump(merged, sort_keys=False)
-        return RenderConfigResponse(workflow=workflow, merged=rendered)
+        """Render configuration (legacy method - uses coi profile as default)."""
+        return self.render_config_with_profile("coi", workflow, overrides)
 
     def default_config_sections(self, workflow: WorkflowType) -> Dict[str, Any]:
-        return self._load_default_config(workflow)
+        """Get default config sections (legacy method)."""
+        config_manager = self._get_config_manager()
+        config_manager.load_defaults_config()
+        config_manager.load_module_configs()
+        config_manager.merge(workflow=workflow.value)
+        return config_manager.export_for_workflow(workflow.value)
 
     def _write_rendered_config(
-        self, run_dir: Path, workflow: WorkflowType, overrides: Dict[str, Any]
+        self, 
+        run_dir: Path, 
+        profile: str,
+        workflow: WorkflowType, 
+        overrides: Dict[str, Any]
     ) -> Path:
-        rendered = self.render_config(workflow, overrides)
+        """Write rendered config to run directory."""
+        rendered = self.render_config_with_profile(profile, workflow, overrides)
         config_path = run_dir / "rendered_config.yaml"
         config_path.write_text(rendered.merged)
         return config_path
@@ -343,7 +349,27 @@ class JobManager:
                 config_key="default_runtime",
                 suggestion="Use one of: conda, docker, singularity",
             ) from exc
+        allowed = self._allowed_runtime_names()
+        if runtime.value not in allowed:
+            raise ConfigurationError(
+                f"Runtime '{runtime.value}' is disabled for web runs",
+                config_key="runtime",
+                suggestion=f"Use one of: {', '.join(allowed)}",
+            )
         submission = submission.copy(update={"runtime": runtime})
+
+        # Build effective overrides from submitted config plus top-level input fields.
+        # The API request carries input_dir/sample_source/samples_csv as first-class fields;
+        # ensure these always propagate into Snakemake's config["input"] block.
+        effective_overrides: Dict[str, Any] = dict(submission.config_overrides or {})
+        input_block = effective_overrides.get("input")
+        if not isinstance(input_block, dict):
+            input_block = {}
+        input_block["fastq_dir"] = submission.input_dir
+        input_block["sample_source"] = submission.sample_source
+        if submission.sample_source == "csv" and submission.samples_csv:
+            input_block["samples_csv"] = submission.samples_csv
+        effective_overrides["input"] = input_block
 
         # Record run metadata early
         record: Dict[str, Any] = {
@@ -356,17 +382,18 @@ class JobManager:
             "run_dir": str(run_dir),
             "run_name": submission.run_name,
             "sample_source": submission.sample_source,
-            "config_overrides": submission.config_overrides,
+            "config_overrides": effective_overrides,
             "input_dir": submission.input_dir,
             "samples_csv": submission.samples_csv,
             "notes": submission.notes,
+            "keep_outputs": bool(submission.keep_outputs),
             "pid": None,
             "log_path": str(run_dir / "logs" / "snakemake.log"),
         }
         self._set_metadata(run_id, record)
 
         config_path = self._write_rendered_config(
-            run_dir, submission.workflow, submission.config_overrides
+            run_dir, submission.profile, submission.workflow, effective_overrides
         )
 
         command = self.runner.build_command(submission, config_path, run_dir)
@@ -405,6 +432,17 @@ class JobManager:
         record["message"] = (
             f"Exited with code {return_code}" if return_code != 0 else "Run completed successfully"
         )
+        retention_policy = self._retention_policy()
+        should_cleanup = (
+            retention_policy == "immediate"
+            or (retention_policy == "until_download" and not bool(record.get("keep_outputs", True)))
+        )
+        if should_cleanup:
+            removed = self._cleanup_run_files(record)
+            if removed:
+                record["message"] = f"{record['message']} (cleanup policy: {retention_policy})"
+            record["log_path"] = None
+            record["artifact_path"] = None
         self._set_metadata(run_id, record)
 
     def get_status(self, run_id: str) -> RunStatus:
@@ -463,6 +501,64 @@ class JobManager:
             return False
         return True
 
+    def _allowed_runtime_names(self) -> List[str]:
+        values = [
+            item.strip().lower()
+            for item in str(settings.allowed_runtimes or "").split(",")
+            if item.strip()
+        ]
+        return values or ["docker", "apptainer"]
+
+    def _retention_policy(self) -> str:
+        policy = str(settings.retention_policy or "until_download").strip().lower()
+        if policy not in {"until_download", "immediate", "manual"}:
+            return "until_download"
+        return policy
+
+    def _cleanup_run_files(self, record: Dict[str, Any]) -> List[str]:
+        """Best-effort cleanup of run files under configured roots."""
+        removed: List[str] = []
+
+        def _safe_remove(target: Path, allowed_root: Path) -> None:
+            nonlocal removed
+            try:
+                target = target.resolve()
+            except FileNotFoundError:
+                return
+            if allowed_root not in target.parents and target != allowed_root:
+                return
+            if not target.exists():
+                return
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+            removed.append(str(target))
+
+        run_dir_raw = record.get("run_dir")
+        if run_dir_raw:
+            try:
+                _safe_remove(Path(run_dir_raw), settings.run_root)
+            except Exception as exc:
+                logger.debug("Best-effort run_dir cleanup failed for %s: %s", run_dir_raw, exc)
+            try:
+                _safe_remove(Path(run_dir_raw) / ".snakemake" / "log", settings.run_root)
+            except Exception as exc:
+                logger.debug(
+                    "Best-effort snakemake log cleanup failed for %s: %s",
+                    run_dir_raw,
+                    exc,
+                )
+
+        log_path = record.get("log_path")
+        if log_path:
+            try:
+                _safe_remove(Path(log_path), settings.run_root)
+            except Exception as exc:
+                logger.debug("Best-effort log cleanup failed for %s: %s", log_path, exc)
+
+        return removed
+
     def tail_logs(self, run_id: str, lines: Optional[int] = None) -> Dict[str, Any]:
         metadata = self._get_metadata(run_id)
         if not metadata:
@@ -499,6 +595,12 @@ class JobManager:
             )
         record = self._metadata_to_dict(metadata)
         run_dir = Path(record["run_dir"])
+        if not run_dir.exists():
+            raise FileProcessingError(
+                f"Run outputs are no longer available for {run_id}",
+                filepath=str(run_dir),
+                suggestion=f"Run outputs may have been cleaned (retention policy: {self._retention_policy()}).",
+            )
         archive_path = settings.artifact_root / f"{run_id}.tar.gz"
 
         try:
@@ -525,6 +627,36 @@ class JobManager:
         record["artifact_path"] = str(archive_path)
         self._set_metadata(run_id, record)
         return ArtifactResponse(run_id=run_id, archive_path=str(archive_path))
+
+    def cleanup_after_download(self, run_id: str, archive_path: str) -> None:
+        """Remove run files and temporary archive after a successful artifact download."""
+        metadata = self._get_metadata(run_id)
+        if not metadata:
+            return
+        record = self._metadata_to_dict(metadata)
+        retention_policy = self._retention_policy()
+        removed: List[str] = []
+        if retention_policy == "until_download":
+            removed = self._cleanup_run_files(record)
+
+        try:
+            archive = Path(archive_path).resolve()
+            if settings.artifact_root.resolve() in archive.parents and archive.exists():
+                archive.unlink()
+                removed.append(str(archive))
+        except Exception as exc:
+            logger.debug("Best-effort archive cleanup after download failed for %s: %s", run_id, exc)
+
+        record["artifact_path"] = None
+        if retention_policy == "until_download":
+            record["log_path"] = None
+            record["keep_outputs"] = False
+        if removed:
+            record["message"] = (
+                (record.get("message") or "Completed")
+                + " (artifact downloaded; run files cleaned)"
+            )
+        self._set_metadata(run_id, record)
 
     def delete_run(self, run_id: str) -> Dict[str, Any]:
         metadata = self._get_metadata(run_id)
@@ -571,6 +703,17 @@ class JobManager:
                     ) from exc
 
         run_dir = Path(record["run_dir"])
+        log_path = record.get("log_path")
+
+        # Explicitly remove the recorded run log first. In normal cases this is
+        # under run_dir and run_dir deletion will handle it, but this makes log
+        # cleanup robust when run_dir cleanup is partial.
+        if log_path:
+            try:
+                _safe_remove(Path(log_path), settings.run_root)
+            except Exception as exc:
+                logger.debug("Best-effort log removal failed for %s: %s", log_path, exc)
+
         try:
             _safe_remove(run_dir, settings.run_root)
         except Exception as exc:
@@ -583,6 +726,17 @@ class JobManager:
             _safe_remove(snakemake_dir, settings.run_root)
         except Exception as exc:
             logger.debug("Best-effort snakemake dir removal failed for %s: %s", snakemake_dir, exc)
+
+        # Also clean Snakemake's nested log directory explicitly.
+        snakemake_log_dir = run_dir / ".snakemake" / "log"
+        try:
+            _safe_remove(snakemake_log_dir, settings.run_root)
+        except Exception as exc:
+            logger.debug(
+                "Best-effort snakemake log dir removal failed for %s: %s",
+                snakemake_log_dir,
+                exc,
+            )
 
         archive_path = record.get("artifact_path")
         if archive_path:

@@ -1,5 +1,6 @@
 """Docker runtime handler for executing Snakemake."""
 
+import os
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
@@ -102,8 +103,19 @@ class DockerRuntime(RuntimeHandler):
 
         # Build Docker command
         cmd = ["docker", "run", "--rm"]
+        # Run container as current host user so generated files are writable
+        # by the same user on bind-mounted paths.
+        if hasattr(os, "getuid") and hasattr(os, "getgid"):
+            cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
         for bind in binds:
             cmd += ["-v", bind]
+        # Ensure user-level caches are writable when running as uid:gid.
+        cmd += [
+            "-e",
+            f"HOME={workdir_container}",
+            "-e",
+            f"XDG_CACHE_HOME={workdir_container}/.cache",
+        ]
         cmd += ["-w", workdir_container, image_ref] + snake_args
 
         return cmd

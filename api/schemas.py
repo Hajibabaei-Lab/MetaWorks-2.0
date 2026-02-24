@@ -18,13 +18,37 @@ class RuntimeType(str, Enum):
     apptainer = "apptainer"
 
 
+class ProfileInfo(BaseModel):
+    """Information about a configuration profile."""
+    name: str = Field(..., description="Profile name (e.g., 'coi', '16s')")
+    description: str = Field(default="", description="Human-readable description")
+    marker: str = Field(default="", description="Marker gene type")
+    file: str = Field(..., description="Profile filename (without extension)")
+
+
+class ProfileListResponse(BaseModel):
+    """Response for listing available profiles."""
+    profiles: List[ProfileInfo]
+
+
+class RenderConfigWithProfileRequest(BaseModel):
+    """Request to render config with profile and workflow."""
+    profile: str = Field(default="coi", description="Profile name (e.g., 'coi', '16s')")
+    workflow: WorkflowType = Field(default=WorkflowType.esv, description="Workflow type (esv|otu)")
+    overrides: Dict[str, Any] = Field(default_factory=dict, description="Config overrides")
+
+
 class RunSubmissionRequest(BaseModel):
+    profile: str = Field(
+        default="coi",
+        description="Configuration profile to use (e.g., 'coi', '16s', 'its')."
+    )
     workflow: WorkflowType = Field(..., description="Workflow to run (esv|otu).")
     run_name: str = Field(
         ..., min_length=1, max_length=255, description="Friendly name for the run."
     )
     runtime: RuntimeType = Field(
-        default=RuntimeType.conda, description="Runtime executor (conda|docker|apptainer)."
+        default=RuntimeType.docker, description="Runtime executor (conda|docker|apptainer)."
     )
     container_image: Optional[str] = Field(
         default=None,
@@ -40,7 +64,7 @@ class RunSubmissionRequest(BaseModel):
         description="Container cache directory for docker/apptainer runtimes.",
     )
     config_overrides: Dict[str, Any] = Field(
-        default_factory=dict, description="Partial config overrides to merge with defaults."
+        default_factory=dict, description="Partial config overrides to merge with profile defaults."
     )
     input_dir: str = Field(
         ..., min_length=1, description="Path to input FASTQ folder on control node or shared FS."
@@ -68,6 +92,10 @@ class RunSubmissionRequest(BaseModel):
     )
     dry_run: bool = Field(
         default=False, description="If true, do not submit to scheduler—only stage config."
+    )
+    keep_outputs: bool = Field(
+        default=True,
+        description="Retain run files until a manual artifact download is requested.",
     )
 
     @field_validator("input_dir")
@@ -109,6 +137,7 @@ class RunStatus(BaseModel):
     log_path: Optional[str] = None
     command: Optional[str] = None
     artifact_path: Optional[str] = None
+    keep_outputs: Optional[bool] = None
 
 
 class LogResponse(BaseModel):
@@ -153,3 +182,5 @@ class DeleteRunResponse(BaseModel):
 class PathsResponse(BaseModel):
     repo_root: str
     runtime_cache: str
+    allowed_runtimes: List[str]
+    retention_policy: str
