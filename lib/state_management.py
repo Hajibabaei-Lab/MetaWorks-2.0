@@ -45,6 +45,7 @@ class RunMetadata:
     message: Optional[str] = None
     command: Optional[str] = None
     artifact_path: Optional[str] = None
+    keep_outputs: Optional[bool] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

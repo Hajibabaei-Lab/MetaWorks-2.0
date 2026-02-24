@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Optional
 
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from lib.exceptions import (
     ConfigurationError,
@@ -179,7 +180,10 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 detail="Artifact archive not found",
             )
         return FileResponse(
-            archive_path, filename=f"{run_id}.tar.gz", media_type="application/gzip"
+            archive_path,
+            filename=f"{run_id}.tar.gz",
+            media_type="application/gzip",
+            background=BackgroundTask(manager.cleanup_after_download, run_id, str(archive_path)),
         )
 
     @app.delete("/runs/{run_id}", response_model=DeleteRunResponse)
