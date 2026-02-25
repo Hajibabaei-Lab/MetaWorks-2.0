@@ -3,7 +3,6 @@
 #import numpy as np
 import sys
 
-import pandas as pd
 from Bio import SeqIO
 
 #from Bio.Seq import Seq

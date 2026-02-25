@@ -4,9 +4,7 @@
 
 import sys
 
-import numpy as np
 import pandas as pd
-from Bio import SeqIO
 
 # read in rdp.out.tmp
 filename = sys.argv[1]
