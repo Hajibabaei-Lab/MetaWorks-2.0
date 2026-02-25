@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 from Bio import SeqIO
 
@@ -48,7 +49,57 @@ def split_fasta(input_file, num_chunks, output_prefix):
     return chunk_files
 
 
-def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43200):
+def resolve_classifier_path(classifier_path):
+    """
+    Resolve the classifier properties file path, allowing common relative locations.
+    Returns an absolute path if found, otherwise raises FileNotFoundError.
+    """
+    path = Path(classifier_path).expanduser()
+    candidates = []
+
+    if path.is_absolute():
+        candidates.append(path)
+    else:
+        cwd = Path.cwd()
+        candidates.extend(
+            [
+                cwd / path,
+                cwd / "runtime" / "classifiers" / path,
+                cwd / "config" / "classifiers" / path,
+            ]
+        )
+
+    checked = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved.is_file():
+            return str(resolved)
+        checked.append(str(resolved))
+
+    searched = "\n  - ".join(checked) if checked else str(path)
+    raise FileNotFoundError(
+        "RDP classifier properties file not found for '-t'.\n"
+        f"Requested path: {classifier_path}\n"
+        f"Checked paths:\n  - {searched}\n"
+        "Provide an absolute path or place the classifier under runtime/classifiers/."
+    )
+
+
+def normalize_options(options):
+    """
+    Parse and normalize RDP options once before parallel execution.
+    If '-t' is provided, validate and rewrite it to an absolute file path.
+    """
+    option_tokens = shlex.split(options)
+    if "-t" in option_tokens:
+        idx = option_tokens.index("-t")
+        if idx + 1 >= len(option_tokens):
+            raise ValueError("Invalid --options: '-t' requires a classifier properties file path")
+        option_tokens[idx + 1] = resolve_classifier_path(option_tokens[idx + 1])
+    return option_tokens
+
+
+def run_rdp_classifier(chunk_file, memory_flag, option_tokens, result_file, timeout=43200):
     """
     Executes the RDP Classifier on a given chunk file.
     Command format:
@@ -57,7 +108,7 @@ def run_rdp_classifier(chunk_file, memory_flag, options, result_file, timeout=43
     """
     cmd = (
         ["rdp_classifier", f"-Xmx{memory_flag}", "classify"]
-        + shlex.split(options)
+        + option_tokens
         + ["-o", result_file, chunk_file]
     )
     print(f"Running command: {' '.join(cmd)}")
@@ -109,6 +160,7 @@ def main():
         help="Additional options for rdp_classifier (e.g., '-t /path/to/rRNAClassifier.properties')",
     )
     args = parser.parse_args()
+    option_tokens = normalize_options(args.options)
 
     # Create a temporary directory to store chunk files
     temp_dir = tempfile.mkdtemp(prefix="rdp_chunks_")
@@ -124,7 +176,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
         future_to_chunk = {
             executor.submit(
-                run_rdp_classifier, chunk, args.memory, args.options, res_file
+                run_rdp_classifier, chunk, args.memory, option_tokens, res_file
             ): chunk
             for chunk, res_file in zip(chunk_files, result_files)
         }

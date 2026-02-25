@@ -101,7 +101,7 @@ def main():
     # Filter ESV table by ESV IDs present in ORF file
     if "#OTU ID" not in df.columns:
         raise FileProcessingError(
-            f"ESV table missing required column: #OTU ID",
+            "ESV table missing required column: #OTU ID",
             filepath=str(esv_table_path),
             suggestion="Ensure ESV table has '#OTU ID' column"
         )
