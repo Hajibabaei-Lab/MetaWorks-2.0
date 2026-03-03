@@ -6,6 +6,13 @@ const STORAGE_KEYS = {
   overridesPrefix: "metaworks.overrides.",
 };
 
+const BUNDLED_TEST = {
+  runtime: "docker",
+  containerImage: "metaworks:latest",
+  inputDir: "/workspace/tests/testing_data",
+  adapterPath: "/workspace/tests/adapters_anchored.fasta",
+};
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -78,6 +85,8 @@ async function apiFetch(path, options = {}) {
 const api = {
   health: () => apiFetch("/health", { headers: { Accept: "text/plain" } }),
   getSettingsPaths: () => apiFetch("/settings/paths"),
+  listProfiles: () => apiFetch("/profiles"),
+  getProfile: (name) => apiFetch(`/profiles/${encodeURIComponent(name)}`),
   submitRun: (payload) =>
     apiFetch("/runs", {
       method: "POST",
@@ -93,11 +102,11 @@ const api = {
   getConfigDefaultsText: (workflow) => apiFetch(`/configs/defaults/${workflow}`),
   getConfigDefaultsSections: (workflow) =>
     apiFetch(`/configs/defaults/${workflow}/sections`),
-  renderConfig: (workflow, overrides) =>
+  renderConfig: (profile, workflow, overrides) =>
     apiFetch(`/configs/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workflow, overrides }),
+      body: JSON.stringify({ profile, workflow, overrides }),
     }),
   listAdapters: () => apiFetch("/adapters"),
   listClassifiers: () => apiFetch("/classifiers"),
@@ -208,30 +217,93 @@ function formatTime(ts) {
 
 const state = {
   draft: storageGet(STORAGE_KEYS.draft, {
-    preset: "coi",
+    profile: "coi",
     workflow: "esv",
     run_name: "",
-    runtime: "conda",
-    container_image: "",
+    runtime: BUNDLED_TEST.runtime,
+    container_image: BUNDLED_TEST.containerImage,
     bind_paths_text: "",
     cache_dir: "",
-    input_dir: "",
+    input_dir: BUNDLED_TEST.inputDir,
     sample_source: "folder",
     samples_csv: "",
     cores: "",
     mem_gb: "",
     dry_run: false,
+    keep_outputs: true,
     notes: "",
   }),
+  profiles: [],  // Loaded from API
   overridesByWorkflow: {
     esv: storageGet(`${STORAGE_KEYS.overridesPrefix}esv`, {}),
     otu: storageGet(`${STORAGE_KEYS.overridesPrefix}otu`, {}),
   },
   defaultsByWorkflow: { esv: null, otu: null },
+  systemSettings: {
+    allowed_runtimes: ["docker", "apptainer"],
+    retention_policy: "until_download",
+  },
   trackedRuns: storageGet(STORAGE_KEYS.trackedRuns, []),
-  view: { route: "submit", intervalId: null },
+  runStatusById: {},
+  view: { route: "submit", intervalId: null, runsPollInFlight: false },
   lastHealth: null,
 };
+
+function normalizeDraftRuntime() {
+  const allowed = Array.isArray(state.systemSettings.allowed_runtimes)
+    ? state.systemSettings.allowed_runtimes
+    : ["docker", "apptainer"];
+  const fallback = allowed[0] || "docker";
+  if (!allowed.includes(state.draft.runtime)) {
+    state.draft.runtime = fallback;
+    persistDraft();
+  }
+}
+
+function isActiveRunStatus(status) {
+  return ["running", "queued", "staged"].includes(String(status || "").toLowerCase());
+}
+
+async function pollActiveRunsAndMaybeRender() {
+  if (state.view.route !== "runs") return;
+  if (state.view.runsPollInFlight) return;
+  if (!state.trackedRuns.length) return;
+
+  const activeRunIds = state.trackedRuns.filter((runId) => {
+    const known = state.runStatusById?.[runId];
+    return !known || isActiveRunStatus(known.status);
+  });
+
+  if (!activeRunIds.length) return;
+
+  state.view.runsPollInFlight = true;
+  try {
+    const updates = await Promise.all(
+      activeRunIds.map(async (runId) => {
+        try {
+          const next = await api.getRunStatus(runId);
+          return { runId, next };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    let changed = false;
+    state.runStatusById = state.runStatusById || {};
+
+    for (const row of updates) {
+      if (!row) continue;
+      const prev = state.runStatusById[row.runId];
+      state.runStatusById[row.runId] = row.next;
+      if (!prev || !deepEqual(prev, row.next)) changed = true;
+    }
+
+    if (changed && state.view.route === "runs") render();
+  } finally {
+    state.view.runsPollInFlight = false;
+  }
+}
 
 function persistDraft() {
   storageSet(STORAGE_KEYS.draft, state.draft);
@@ -434,6 +506,7 @@ function renderSubmitView() {
       const overrides = currentOverrides();
 
       const payload = {
+        profile: state.draft.profile || "coi",
         workflow,
         run_name: runName,
         runtime,
@@ -449,6 +522,7 @@ function renderSubmitView() {
         cores: state.draft.cores ? Number(state.draft.cores) : null,
         mem_gb: state.draft.mem_gb ? Number(state.draft.mem_gb) : null,
         dry_run: Boolean(state.draft.dry_run),
+        keep_outputs: true,
       };
 
       const btn = form.querySelector('button[type="submit"]');
@@ -478,6 +552,37 @@ function renderSubmitView() {
     render();
   }
 
+  function applyBundledTestRunDefaults() {
+    const ts = new Date();
+    const stamp = [
+      ts.getFullYear(),
+      String(ts.getMonth() + 1).padStart(2, "0"),
+      String(ts.getDate()).padStart(2, "0"),
+      String(ts.getHours()).padStart(2, "0"),
+      String(ts.getMinutes()).padStart(2, "0"),
+      String(ts.getSeconds()).padStart(2, "0"),
+    ].join("");
+    const workflow = state.draft.workflow || "esv";
+    state.draft.runtime = BUNDLED_TEST.runtime;
+    state.draft.container_image = BUNDLED_TEST.containerImage;
+    state.draft.input_dir = BUNDLED_TEST.inputDir;
+    state.draft.sample_source = "folder";
+    state.draft.samples_csv = "";
+    state.draft.keep_outputs = true;
+    if (!String(state.draft.run_name || "").trim()) {
+      state.draft.run_name = `${workflow}-test-${stamp}`;
+    }
+    const overrides = state.overridesByWorkflow[workflow] || {};
+    setAt(overrides, ["trimming", "adapters"], BUNDLED_TEST.adapterPath);
+    setAt(overrides, ["classification", "rdp", "use_custom_classifier"], false);
+    setAt(overrides, ["classification", "rdp", "builtin_classifier"], "fungallsu");
+    state.overridesByWorkflow[workflow] = overrides;
+    persistOverrides(workflow);
+    persistDraft();
+    toast("Submit", "Bundled Docker test run defaults applied.");
+    rerender();
+  }
+
   function inputField({ label, help, input }) {
     return el("div", { class: "field" }, [
       el("label", { for: input.id, text: label }),
@@ -485,6 +590,11 @@ function renderSubmitView() {
       help ? el("div", { class: "help", text: help }) : null,
     ]);
   }
+
+  const allowedRuntimes = Array.isArray(state.systemSettings.allowed_runtimes)
+    ? state.systemSettings.allowed_runtimes
+    : ["docker", "apptainer"];
+  const retentionPolicy = String(state.systemSettings.retention_policy || "until_download");
 
   const presetSelect = el(
     "select",
@@ -540,11 +650,12 @@ function renderSubmitView() {
         rerender();
       },
     },
-    [
-      el("option", { value: "conda", text: "Conda" }),
-      el("option", { value: "docker", text: "Docker" }),
-      el("option", { value: "apptainer", text: "Apptainer" }),
-    ]
+    allowedRuntimes.map((runtime) =>
+      el("option", {
+        value: runtime,
+        text: runtime === "apptainer" ? "Apptainer" : runtime[0].toUpperCase() + runtime.slice(1),
+      })
+    )
   );
   runtimeSelect.value = state.draft.runtime;
 
@@ -558,10 +669,27 @@ function renderSubmitView() {
           el("div", { class: "muted", text: "Create a run, stage config overrides, and launch Snakemake." }),
         ]),
         el("div", { class: "row" }, [
+          el(
+            "button",
+            {
+              class: "btn btn-secondary",
+              type: "button",
+              onclick: () => applyBundledTestRunDefaults(),
+            },
+            "Use bundled test run"
+          ),
           el("button", { class: "btn btn-primary", type: "submit" }, "Submit Run"),
         ]),
       ]),
       el("div", { class: "card-body" }, [
+        el("div", { class: "help" }, [
+          "Quick start: click ",
+          el("span", { class: "kbd", text: "Use bundled test run" }),
+          " to prefill Docker + bundled test FASTQs (",
+          el("span", { class: "kbd", text: BUNDLED_TEST.inputDir }),
+          ").",
+        ]),
+        el("div", { class: "hr" }),
         el("div", { class: "grid grid-2" }, [
           inputField({
             label: "Preset",
@@ -591,7 +719,7 @@ function renderSubmitView() {
           }),
           inputField({
             label: "Runtime",
-            help: "Conda runs on the host; Docker/Apptainer runs inside a container.",
+            help: "Runs are executed in containerized mode configured by the server.",
             input: runtimeSelect,
           }),
           inputField({
@@ -796,6 +924,13 @@ function renderSubmitView() {
                 "Creates the run directory and rendered config but does not launch Snakemake.",
               ]),
             ]),
+            el("div", { class: "help" }, [
+              retentionPolicy === "immediate"
+                ? "Server retention policy is immediate cleanup after completion."
+                : retentionPolicy === "manual"
+                  ? "Server retention policy is manual cleanup (files persist until deleted)."
+                  : "Run files are retained until you click Download artifacts in the Runs tab, then cleaned automatically.",
+            ]),
           ]),
         ]),
 
@@ -900,8 +1035,6 @@ function renderRunsView() {
     );
   }
 
-  let hasActive = false;
-
   for (const runId of runIds) {
     const card = el("div", { class: "card" });
     const headerRight = el("div", { class: "row" }, [el("span", { class: "pill neutral", text: "loading" })]);
@@ -920,10 +1053,9 @@ function renderRunsView() {
     (async () => {
       try {
         const status = await api.getRunStatus(runId);
+        state.runStatusById = state.runStatusById || {};
+        state.runStatusById[runId] = status;
         const prog = progressForStatus(status.status);
-        if (["running", "queued", "staged"].includes(String(status.status || "").toLowerCase())) {
-          hasActive = true;
-        }
 
         header.replaceWith(
           el("div", { class: "card-header" }, [
@@ -1037,24 +1169,25 @@ function renderRunsView() {
           "Delete"
         );
 
+        const downloadLogBtn = el(
+          "a",
+          {
+            class: "btn btn-accent",
+            href: `/runs/${encodeURIComponent(runId)}/logs/download`,
+          },
+          "Download log"
+        );
+        const downloadArtifactsBtn = el(
+          "a",
+          {
+            class: "btn btn-accent",
+            href: `/runs/${encodeURIComponent(runId)}/artifacts/download`,
+          },
+          "Download artifacts"
+        );
         const actions = el("div", { class: "row" }, [
           logsBtn,
-          el(
-            "a",
-            {
-              class: "btn btn-accent",
-              href: `/runs/${encodeURIComponent(runId)}/logs/download`,
-            },
-            "Download log"
-          ),
-          el(
-            "a",
-            {
-              class: "btn btn-accent",
-              href: `/runs/${encodeURIComponent(runId)}/artifacts/download`,
-            },
-            "Download artifacts"
-          ),
+          ...(status.keep_outputs ? [downloadLogBtn, downloadArtifactsBtn] : []),
           cancelBtn,
           removeBtn,
           deleteBtn,
@@ -1093,6 +1226,16 @@ function renderRunsView() {
             el("label", { text: "Log path" }),
             el("div", { class: "help", text: status.log_path || "—" }),
           ]),
+          el("div", { class: "field" }, [
+            el("label", { text: "Persistence" }),
+            el(
+              "div",
+              {
+                class: "help",
+                text: status.keep_outputs ? "Retained (download/debug enabled)" : "Ephemeral (auto-cleanup)",
+              }
+            ),
+          ]),
         ]);
 
         const cmdDetails =
@@ -1129,6 +1272,8 @@ function renderRunsView() {
           ])
         );
       } catch (err) {
+        state.runStatusById = state.runStatusById || {};
+        delete state.runStatusById[runId];
         body.replaceWith(
           el("div", { class: "card-body" }, [
             el("div", { class: "row" }, [statusPill("unknown")]),
@@ -1164,16 +1309,19 @@ function renderRunsView() {
     })();
   }
 
-  root.appendChild(renderPageHeader("Runs", "Track active/completed runs by ID. Active runs auto-refresh every 5s on this page."));
+  root.appendChild(
+    renderPageHeader(
+      "Runs",
+      "Track active/completed runs by ID. Active runs are polled every 5s without full page refresh."
+    )
+  );
   root.appendChild(top);
   root.appendChild(list);
 
-  // Auto-refresh while viewing Runs
+  // Poll active runs while viewing Runs without rebuilding the full page each cycle.
   if (state.view.intervalId) clearInterval(state.view.intervalId);
   state.view.intervalId = setInterval(() => {
-    if (state.view.route !== "runs") return;
-    if (!state.trackedRuns.length) return;
-    render();
+    pollActiveRunsAndMaybeRender().catch(() => {});
   }, 5000);
 
   return root;
@@ -1707,4 +1855,22 @@ if (!state.overridesByWorkflow.otu || Object.keys(state.overridesByWorkflow.otu)
   state.overridesByWorkflow.otu = applyPreset(state.draft.preset || "coi", "otu");
   persistOverrides("otu");
 }
-render();
+normalizeDraftRuntime();
+
+(async () => {
+  try {
+    const settingsRes = await api.getSettingsPaths();
+    const allowed = Array.isArray(settingsRes?.allowed_runtimes)
+      ? settingsRes.allowed_runtimes.map((v) => String(v).toLowerCase()).filter(Boolean)
+      : [];
+    if (allowed.length) state.systemSettings.allowed_runtimes = allowed;
+    state.systemSettings.retention_policy = String(
+      settingsRes?.retention_policy || state.systemSettings.retention_policy
+    ).toLowerCase();
+    normalizeDraftRuntime();
+  } catch {
+    // Keep local defaults if settings endpoint is unavailable.
+  } finally {
+    render();
+  }
+})();
