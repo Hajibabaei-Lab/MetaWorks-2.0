@@ -1,6 +1,6 @@
 # MetaWorks Configuration Guide
 
-This guide explains how to use the new 3-layer configuration system in MetaWorks v2.0.
+This guide explains how to use the profile-based configuration system in MetaWorks v2.0.
 
 ---
 
@@ -8,71 +8,202 @@ This guide explains how to use the new 3-layer configuration system in MetaWorks
 
 1. [Quick Start](#quick-start)
 2. [Configuration Overview](#configuration-overview)
-3. [Creating Your Config](#creating-your-config)
-4. [Configuration Sections](#configuration-sections)
-5. [Common Use Cases](#common-use-cases)
-6. [Troubleshooting](#troubleshooting)
+3. [Profile System](#profile-system)
+4. [Creating Your Config](#creating-your-config)
+5. [Configuration Sections](#configuration-sections)
+6. [Common Use Cases](#common-use-cases)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Quick Start
 
-### 1. Copy the Template
-
-```bash
-cp config/user_config.yaml my_analysis.yaml
-```
-
-### 2. Edit Your Config
-
-```bash
-nano my_analysis.yaml
-```
-
-### 3. Run the Pipeline
-
-```bash
-snakemake --configfile my_analysis.yaml
-```
-
-Or with the new config manager:
+### Option A: Use a Profile (Recommended)
 
 ```python
 from lib.config import ConfigManager
 
-config = ConfigManager.load("my_analysis.yaml")
+# Load with a profile - simplest approach!
+config = ConfigManager.load(
+    profile="coi",           # Marker-specific profile
+    workflow="esv",          # "esv" or "otu"
+    repo_root="/path/to/MetaWorks-2.0"
+)
+```
+
+### Option B: Web UI
+
+1. Select a **Profile** (e.g., "coi" for COI arthropods)
+2. Select a **Workflow** (ESV or OTU)
+3. Fill in your input directory and run name
+4. Click "Submit Run"
+
+### Option C: CLI with Config File
+
+```bash
+# Create minimal user config
+cat > my_run.yaml << EOF
+input:
+  fastq_dir: "tests/testing_data"
+  sample_source: "folder"
+EOF
+
+# Run with profile
+snakemake --configfile config/defaults.yaml config/profiles/coi.yaml my_run.yaml
 ```
 
 ---
 
 ## Configuration Overview
 
-The new configuration system has three layers:
+The configuration system uses four layers, merged in order:
 
 ```
 ┌─────────────────────────────────────┐
-│   User Configuration              │  ← You edit this
-│   Simple, focused parameters       │
+│   User Overrides                   │  ← Your minimal config
+│   Just what you want to change     │
 └─────────────────────────────────────┘
-              ↓ extends
+              ↓ merges with
 ┌─────────────────────────────────────┐
-│   Module Configuration            │  ← Module defaults
-│   Complete defaults & metadata    │
+│   Profile Configuration            │  ← Marker-specific settings
+│   COI, 16S, ITS, 12S presets       │
 └─────────────────────────────────────┘
-              ↓ extends
+              ↓ merges with
 ┌─────────────────────────────────────┐
-│   System Configuration           │  ← System settings
-│   Infrastructure settings        │
+│   Pipeline Defaults                │  ← Base parameter defaults
+│   config/defaults.yaml             │
+└─────────────────────────────────────┘
+              ↓ merges with
+┌─────────────────────────────────────┐
+│   System & Module Configs          │  ← Infrastructure & modules
+│   System settings, validation      │
 └─────────────────────────────────────┘
 ```
 
 ### Layer Responsibilities
 
-| Layer | Who Edits | Purpose | Size |
-|--------|-------------|----------|-------|
-| **User Config** | You | Your pipeline choices | 40-80 lines |
-| **Module Config** | Developers | Module defaults & validation | 100-150 lines each |
-| **System Config** | System admins | Infrastructure settings | 30-50 lines |
+| Layer | File(s) | Purpose | Edit? |
+|--------|---------|---------|-------|
+| **User Overrides** | Your YAML or API request | Your specific choices | ✅ Yes |
+| **Profile** | `config/profiles/*.yaml` | Marker-specific presets | Rarely |
+| **Defaults** | `config/defaults.yaml` | Pipeline-wide defaults | Rarely |
+| **System/Modules** | `config/system_config.yaml`, `modules/*/module_config.yaml` | Infrastructure | No |
+
+---
+
+## Profile System
+
+Profiles are pre-configured settings for common marker genes. They dramatically reduce the amount of configuration needed.
+
+### Available Profiles
+
+| Profile | Description | Marker | Use Case |
+|---------|-------------|--------|----------|
+| `coi` | COI arthropods | COI | Insect/crustacean metabarcoding |
+| `coi_vertebrate` | COI vertebrates | COI | Fish/bird/mammal metabarcoding |
+| `16s` | 16S rRNA | 16S | Bacterial/archaeal microbiome |
+| `its` | ITS fungi | ITS_fungi | Fungal community analysis |
+| `12s` | 12S vertebrates | 12S_vertebrate | eDNA for vertebrates |
+
+### Profile Contents
+
+Each profile contains:
+
+1. **Marker information** - The genetic marker type
+2. **Classification settings** - Pre-configured classifier options
+3. **Pseudogene filtering** - Appropriate genetic code and HMM settings
+
+Example: `config/profiles/coi.yaml`:
+
+```yaml
+profile:
+  name: "coi"
+  description: "COI metabarcoding for arthropods and invertebrates"
+  marker: "COI"
+
+classification:
+  marker: "COI"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
+
+pseudogene_filtering:
+  method: "hmm"
+  genetic_code: 5  # Invertebrate mitochondrial
+  hmm_profile: "config/hmm/bold.hmm"
+  taxon1: "-e Arthropoda"
+  taxon2: "-v Chordata"
+```
+
+### Using Profiles
+
+#### Web UI
+
+The Web UI now includes a profile selector. Simply:
+1. Choose your profile from the dropdown
+2. Fill in input directory and run name
+3. Submit!
+
+#### API
+
+```python
+from lib.config import ConfigManager
+
+# Load with profile
+config = ConfigManager.load(
+    profile="coi",
+    workflow="esv",
+    repo_root="/path/to/MetaWorks-2.0"
+)
+
+# Add your overrides
+config.user_config = {
+    "input": {
+        "fastq_dir": "/data/my_samples"
+    }
+}
+
+# Merge and export
+config.merge(workflow="esv")
+```
+
+#### CLI
+
+```bash
+# Layer configs: defaults → profile → your_config
+snakemake \
+  --configfile config/defaults.yaml \
+  --configfile config/profiles/coi.yaml \
+  --configfile my_run.yaml
+```
+
+### Creating Custom Profiles
+
+Create a new file in `config/profiles/`:
+
+```yaml
+# config/profiles/my_custom.yaml
+profile:
+  name: "my_custom"
+  description: "My custom marker configuration"
+  marker: "CUSTOM"
+
+classification:
+  marker: "CUSTOM"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/CUSTOM.properties"
+
+pseudogene_filtering:
+  method: "orf"
+  genetic_code: 1
+```
+
+Then use it:
+
+```python
+config = ConfigManager.load(profile="my_custom", workflow="esv")
+```
 
 ---
 

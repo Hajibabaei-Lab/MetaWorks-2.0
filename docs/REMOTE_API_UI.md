@@ -65,6 +65,8 @@ Run and data paths are automatically bound (`<run_dir>:<run_dir>`, `<input_dir>:
    - `METAWORKS_CONTAINER_IMAGE=docker://metaworks:latest`
    - `METAWORKS_SINGULARITY_CACHE=/data/metaworks/cache`
    - `METAWORKS_DEFAULT_RUNTIME=apptainer` to favor Apptainer without editing the UI.
+   - `METAWORKS_ALLOWED_RUNTIMES=docker,apptainer` to constrain web-submitted runtime modes.
+   - `METAWORKS_RETENTION_POLICY=until_download` (`until_download|immediate|manual`) to control run file cleanup behavior.
 
 ## Future two-container deployment (plan)
 
@@ -126,3 +128,47 @@ Notes
 - The backend auto-binds the repo to `/workspace` inside the container so `Snakefile`/configs resolve. Any paths outside the repo must be bound explicitly and referenced by their inside-container path.
 - Apptainer runtime follows the same pattern but uses `apptainer exec ... snakemake ...` with `-B` binds and the cache/prefix for pulls.
 - Conda runtime runs Snakemake on the host if you prefer that mode.
+
+## Research Community Delivery Plan
+
+Goal: provide a simple web-first tool for researchers with minimal setup, containerized execution, and clear data-retention behavior.
+
+### Phase 1: Community-ready baseline
+
+- Keep the web app as the primary interface (submit, monitor, download).
+- Restrict web-submitted runs to containerized runtimes (`docker` and `apptainer`).
+- Provide a one-click bundled test run so new users can validate setup before using their own data.
+- Add preflight validation on submit (input path exists, readable FASTQs, classifier/adapters checks).
+
+### Phase 2: Ephemeral-by-default data handling
+
+- Keep run outputs/logs only until a user explicitly downloads artifacts.
+- Trigger automatic cleanup of run files after successful artifact download.
+- Keep lightweight run metadata for status/audit unless strict stateless mode is enabled.
+- Show explicit UI messaging: "Unsaved runs are deleted after download or retention expiry."
+
+### Phase 3: Reproducibility and provenance
+
+- Include a manifest in every artifact archive:
+  - workflow + overrides
+  - container image tag/digest
+  - code revision (git SHA)
+  - execution timestamp and runtime details
+- Add "rerun from manifest" support to reproduce prior analyses.
+
+### Phase 4: Deployment and operations
+
+- Provide a standard Docker Compose deployment:
+  - `frontend` (static UI + reverse proxy)
+  - `backend` (FastAPI + job manager)
+  - optional ephemeral volume profile for runtime data
+- Add configurable retention policy (immediate, TTL, manual cleanup).
+- Add auth-ready deployment guidance (OIDC/reverse-proxy auth) for shared institutional hosting.
+- Add metrics and health checks for administrators (queue depth, run durations, failures).
+
+### Phase 5: Community distribution package
+
+- Publish a "5-minute quickstart" with copy-paste commands.
+- Ship a small sample dataset + expected output checks.
+- Provide a troubleshooting matrix for common runtime/setup failures.
+- Maintain versioned release notes describing workflow/runtime behavior changes.
