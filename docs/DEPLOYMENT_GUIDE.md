@@ -340,7 +340,7 @@ MetaWorks uses environment variables for configuration:
 | `METAWORKS_CLASSIFIER_ROOT` | Directory for classifiers | `runtime/classifiers` |
 | `METAWORKS_STAGING_ROOT` | Directory for staging | `runtime/staging` |
 | `METAWORKS_SINGULARITY_CACHE` | Singularity cache directory | `runtime/cache` |
-| `METAWORKS_DEFAULT_RUNTIME` | Default runtime (conda/docker/apptainer) | `conda` |
+| `METAWORKS_DEFAULT_RUNTIME` | Default runtime (conda/docker/apptainer) | `docker` |
 | `METAWORKS_CONTAINER_IMAGE` | Default container image | None |
 
 ### System Configuration
