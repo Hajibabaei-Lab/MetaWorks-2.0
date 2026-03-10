@@ -4,30 +4,107 @@
 
 configfile: "config/user_config.yaml"
 
+include: "modules/common.smk"
+
+OUTPUT_DIR = get_output_dir(config)
+
+
+def outpath(*parts):
+    return "/".join([OUTPUT_DIR, *parts])
+
+
+ENABLE_PREPROCESSING = is_module_enabled(config, "preprocessing", True)
+ENABLE_TRIMMING = is_module_enabled(config, "trimming", True)
+ENABLE_DENOISING = is_module_enabled(config, "denoising", True)
+ENABLE_CLASSIFICATION = is_module_enabled(config, "classification", True)
+ENABLE_PSEUDOGENE = is_module_enabled(config, "pseudogene_filtering", False)
+ENABLE_STATS = is_module_enabled(config, "stats", True)
+RUN_CLASSIFICATION_STAGE = ENABLE_DENOISING and ENABLE_CLASSIFICATION
+
+# Validate module dependencies before loading rules.
+dependency_errors = []
+if ENABLE_DENOISING and not ENABLE_TRIMMING:
+    dependency_errors.append("modules.denoising=true requires modules.trimming=true")
+if ENABLE_CLASSIFICATION and not ENABLE_DENOISING:
+    dependency_errors.append("modules.classification=true requires modules.denoising=true")
+if ENABLE_PSEUDOGENE and not ENABLE_CLASSIFICATION:
+    dependency_errors.append("modules.pseudogene_filtering=true requires modules.classification=true")
+if ENABLE_PSEUDOGENE and not ENABLE_DENOISING:
+    dependency_errors.append("modules.pseudogene_filtering=true requires modules.denoising=true")
+if ENABLE_STATS and not ENABLE_TRIMMING:
+    dependency_errors.append("modules.stats=true requires modules.trimming=true")
+
+if dependency_errors:
+    raise ValueError(
+        "Module dependency validation failed:\n- " + "\n- ".join(dependency_errors)
+    )
+
 # -------------------------------
 # Load external module rule files
 # -------------------------------
 include: "modules/utils/rules/utils.smk"
-include: "modules/preprocessing/rules/preprocessing.smk"
-include: "modules/trimming/rules/adapter_trimming.smk"
-include: "modules/denoising/rules/denoising.smk"
-include: "modules/classification/rules/classifier.smk"
-include: "modules/pseudogene/rules/pseudogene.smk"
-include: "modules/utils/rules/results.smk"
-include: "modules/stats/rules/stats.smk"
+if ENABLE_PREPROCESSING:
+    include: "modules/preprocessing/rules/preprocessing.smk"
+if ENABLE_TRIMMING:
+    include: "modules/trimming/rules/adapter_trimming.smk"
+if ENABLE_DENOISING:
+    include: "modules/denoising/rules/denoising.smk"
+if ENABLE_CLASSIFICATION:
+    include: "modules/classification/rules/classifier.smk"
+if RUN_CLASSIFICATION_STAGE:
+    include: "modules/pseudogene/rules/pseudogene.smk"
+    include: "modules/utils/rules/results.smk"
+if ENABLE_STATS:
+    include: "modules/stats/rules/stats.smk"
+
+def sample_targets(pattern):
+    return expand(outpath(pattern), sample=SAMPLES_UNIQUE)
+
+
+FINAL_TARGETS = []
+
+if ENABLE_STATS:
+    FINAL_TARGETS += [
+        outpath("stats/R1.stats"),
+        outpath("stats/R2.stats"),
+        outpath("stats/paired.stats"),
+        outpath("stats/trimmed.stats"),
+    ]
+
+if RUN_CLASSIFICATION_STAGE:
+    FINAL_TARGETS += [
+        outpath("results.csv"),
+        outpath("taxonomy.csv"),
+        outpath("ESV.table"),
+    ]
+
+elif ENABLE_DENOISING:
+    FINAL_TARGETS += [
+        outpath("cat.denoised.nonchimeras"),
+    ]
+
+elif ENABLE_TRIMMING:
+    FINAL_TARGETS += sample_targets("trimmed/{sample}.fasta.gz")
+
+elif ENABLE_PREPROCESSING:
+    raise ValueError(
+        "modules.preprocessing=true cannot be the terminal stage because "
+        "preprocessing only emits temp() outputs. Enable trimming, denoising, "
+        "classification, or stats for durable workflow targets."
+    )
+
+FINAL_TARGETS = list(dict.fromkeys(FINAL_TARGETS))
+
+if not FINAL_TARGETS:
+    raise ValueError(
+        "No final targets selected. Enable at least one runnable module set "
+        "(e.g., modules.stats=true, modules.trimming=true, or "
+        "modules.classification=true with modules.denoising=true)."
+    )
 
 # -------------------------------
 # Define workflow target
 # -------------------------------
 rule all:
-	input:
-		# Rule testing:
-		config["pipeline"]["output_dir"] + "/stats/R1.stats",
-		config["pipeline"]["output_dir"] + "/stats/R2.stats",
-		expand(config["pipeline"]["output_dir"] + "/stats/{sample}.Pstats", sample=SAMPLES_UNIQUE),
-		config["pipeline"]["output_dir"] + "/stats/paired.stats",
-		expand(config["pipeline"]["output_dir"] + "/stats/{sample}.trimmedstats", sample=SAMPLES_UNIQUE),
-		config["pipeline"]["output_dir"] + "/stats/trimmed.stats",
-		config["pipeline"]["output_dir"] + "/results.csv",
-		config["pipeline"]["output_dir"] + "/taxonomy.csv",
-		config["pipeline"]["output_dir"] + "/ESV.table"
+    input:
+        FINAL_TARGETS
