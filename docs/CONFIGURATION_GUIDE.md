@@ -49,7 +49,7 @@ input:
 EOF
 
 # Run with profile
-snakemake --configfile config/defaults.yaml config/profiles/coi.yaml my_run.yaml
+snakemake --configfile config/defaults.yaml config/presets/coi.yaml my_run.yaml
 ```
 
 ---
@@ -85,7 +85,7 @@ The configuration system uses four layers, merged in order:
 | Layer | File(s) | Purpose | Edit? |
 |--------|---------|---------|-------|
 | **User Overrides** | Your YAML or API request | Your specific choices | ✅ Yes |
-| **Profile** | `config/profiles/*.yaml` | Marker-specific presets | Rarely |
+| **Profile** | `config/presets/*.yaml` | Marker-specific presets | Rarely |
 | **Defaults** | `config/defaults.yaml` | Pipeline-wide defaults | Rarely |
 | **System/Modules** | `config/system_config.yaml`, `modules/*/module_config.yaml` | Infrastructure | No |
 
@@ -113,7 +113,7 @@ Each profile contains:
 2. **Classification settings** - Pre-configured classifier options
 3. **Pseudogene filtering** - Appropriate genetic code and HMM settings
 
-Example: `config/profiles/coi.yaml`:
+Example: `config/presets/coi.yaml`:
 
 ```yaml
 profile:
@@ -173,16 +173,16 @@ config.merge(workflow="esv")
 # Layer configs: defaults → profile → your_config
 snakemake \
   --configfile config/defaults.yaml \
-  --configfile config/profiles/coi.yaml \
+  --configfile config/presets/coi.yaml \
   --configfile my_run.yaml
 ```
 
 ### Creating Custom Profiles
 
-Create a new file in `config/profiles/`:
+Create a new file in `config/presets/`:
 
 ```yaml
-# config/profiles/my_custom.yaml
+# config/presets/my_custom.yaml
 profile:
   name: "my_custom"
   description: "My custom marker configuration"

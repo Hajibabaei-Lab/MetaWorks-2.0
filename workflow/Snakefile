@@ -1,0 +1,46 @@
+# Snakefile
+# MetaWorks v2.0 - ESV Pipeline
+# Configuration: Edit config/user_config.yaml to customize your pipeline
+#
+# Standard Snakemake deployment layout:
+#   workflow/Snakefile       ← you are here
+#   workflow/rules/          ← rule modules
+#   workflow/scripts/        ← Python helper scripts
+#   workflow/profiles/       ← execution profiles (default, slurm, local)
+#   config/                  ← pipeline configuration & marker presets
+
+import sys
+from pathlib import Path
+
+configfile: "config/user_config.yaml"
+
+# workflow.basedir points to workflow/, go up one level for repo root.
+REPO_ROOT = Path(workflow.basedir).resolve().parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from lib.config.module_registry import (  # noqa: E402
+    resolve_module_include_paths,
+    resolve_terminal_targets,
+    validate_module_selection,
+)
+
+include: "rules/common.smk"
+
+dependency_errors = validate_module_selection(config)
+if dependency_errors:
+    raise ValueError(
+        "Module dependency validation failed:\n- " + "\n- ".join(dependency_errors)
+    )
+
+for module_include_path in resolve_module_include_paths(config, repo_root=str(REPO_ROOT)):
+    include: module_include_path
+
+FINAL_TARGETS = resolve_terminal_targets(config, SAMPLES_UNIQUE)
+
+# -------------------------------
+# Define workflow target
+# -------------------------------
+rule all:
+    input:
+        FINAL_TARGETS

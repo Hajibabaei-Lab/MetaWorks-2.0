@@ -1,0 +1,23 @@
+# MetaWorks Local Environment Profile (Layer 2)
+# For running on a workstation or laptop.
+# Activate: snakemake --workflow-profile profiles/local
+
+executor: local
+
+# Conservative defaults for a single machine
+default-resources:
+  mem_mb: 2000
+  time_min: 60
+
+# Limit parallelism to avoid overwhelming the machine
+cores: 8
+jobs: 4
+
+# Scale down memory-heavy rules
+set-resources:
+  taxonomic_assignment:
+    mem_mb: 16000
+    time_min: 360
+  create_ESV_table:
+    mem_mb: 4000
+    time_min: 60
