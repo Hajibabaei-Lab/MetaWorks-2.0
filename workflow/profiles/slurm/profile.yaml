@@ -1,0 +1,39 @@
+# MetaWorks SLURM Environment Profile (Layer 2)
+# Maintained by system administrators for the cluster.
+# Activate: snakemake --workflow-profile profiles/slurm
+#
+# Overrides workflow defaults (profiles/default/) with cluster-appropriate
+# values. Users further override via ~/.config/snakemake/metaworks/
+
+executor: slurm
+
+# SLURM-specific defaults — adjust for your cluster
+default-resources:
+  slurm_partition: "normal"
+  slurm_account: "def-lab"
+  mem_mb: 4000
+  time_min: 60
+
+# Scale up expensive rules for cluster scheduling
+set-resources:
+  taxonomic_assignment:
+    mem_mb: 40000
+    time_min: 480
+    slurm_partition: "largemem"
+  create_ESV_table:
+    mem_mb: 8000
+    time_min: 120
+  chimera_removal:
+    mem_mb: 8000
+    time_min: 90
+  denoise:
+    mem_mb: 8000
+    time_min: 120
+  hmmscan:
+    mem_mb: 4000
+    time_min: 90
+
+# Cluster-wide execution limits
+jobs: 50
+latency-wait: 60
+retries: 1
