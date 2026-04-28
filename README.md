@@ -54,15 +54,25 @@ A flexible, web-based control node for managing bioinformatics pipeline runs (ES
 
 That's it! The web interface is now ready to use.
 
-### Using Docker Compose (Easiest)
+### Using Docker Compose
 
-For a complete, containerized deployment:
+There are now two deployment shapes:
+
+1. **Legacy single-container backend** using the root-level `docker-compose.yml`
+2. **Recommended split deployment** using `deploy/docker-compose.yml`
+
+For the new frontend/backend split:
 
 ```bash
-docker-compose up -d
+cd deploy
+cp .env.example .env
+docker compose up --build
 ```
 
-Access the UI at `http://localhost:8000`.
+Access the UI at `http://localhost:8080`.
+This deployment now defaults to the backend container's internal `conda` runtime, so users only
+need Docker/Compose to run the API and both MetaWorks workflows.
+For lab-server deployments, bind the frontend to `127.0.0.1` and reach it through an SSH tunnel.
 
 ## Architecture
 
@@ -70,16 +80,18 @@ Access the UI at `http://localhost:8000`.
 
 MetaWorks uses a **control node** architecture:
 
-1. **Web UI**: Provides user interface for submitting and monitoring runs
+1. **Web UI**: Standalone Vue 3 application in the separate `metaworks-ui` project
 2. **API Server**: FastAPI backend managing run lifecycle
 3. **Job Manager**: Handles scheduler integration and job execution
 4. **Runtime Layer**: Supports Conda, Docker, and Apptainer for running pipelines
 
 This separation allows the control node to run anywhere (laptop, server, HPC) while the actual pipeline runs execute on appropriate compute resources.
 
-### Zero-Download Experience
+### Split Frontend Deployment
 
-Users simply access the web interface - no frontend build steps required. The Vue UI is pre-built into static files served by FastAPI.
+The backend now exposes a stable `/api` surface and optional legacy static UI serving. The
+recommended deployment runs the standalone frontend in its own container and proxies `/api/*` to
+FastAPI, so the runner remains independently usable without the web app.
 
 ## Documentation
 
@@ -139,14 +151,8 @@ MetaWorks-2.0/
 │       ├── runs.py         # Run CRUD operations
 │       ├── configs.py      # Configuration management
 │       └── assets.py      # Asset uploads
-├── ui/                    # Vue 3 + Vite frontend
-│   ├── src/
-│   │   ├── App.vue       # Main application
-│   │   ├── main.js       # Entry point
-│   │   └── components/   # Vue components
-│   ├── dist/             # Build output (generated)
-│   ├── package.json       # Node dependencies
-│   └── vite.config.js    # Vite configuration
+├── ui/                    # Legacy static UI still available for compatibility
+├── deploy/               # Split Docker Compose deployment assets
 ├── modules/               # Snakemake pipeline modules
 ├── runtime/              # Runtime directories (generated)
 ├── config/               # Configuration files
@@ -166,10 +172,14 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 ### Production Server
 
-Deploy to a server for team access:
+Deploy the recommended split stack:
 ```bash
-docker-compose up -d
+cd deploy
+docker compose up -d --build
 ```
+
+For the quickest smoke test after startup, submit a run against
+`/MetaWorks/tests/testing_data`, which is already bundled into the backend image.
 
 ### HPC Cluster
 

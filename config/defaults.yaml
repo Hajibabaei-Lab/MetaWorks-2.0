@@ -20,22 +20,12 @@ input:
 # Module Toggles
 # ============================================================================
 modules:
-  preprocessing: true
   trimming: true
   denoising: true
   classification: true
   classification_engine: "rdp"
   pseudogene_filtering: false
   stats: true
-
-# ============================================================================
-# Preprocessing Parameters (SeqPrep)
-# ============================================================================
-preprocessing:
-  quality_score: 13
-  min_overlap: 25
-  max_mismatch: 0.02
-  min_match: 0.9
 
 # ============================================================================
 # Trimming Parameters (Cutadapt)

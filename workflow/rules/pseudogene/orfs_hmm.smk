@@ -14,15 +14,17 @@ rule get_orfs_nt_hmm:
         ml=lambda wc: PSEUDOGENE_CONFIG.get("min_orf_length", 30),
         n=lambda wc: str(PSEUDOGENE_CONFIG.get("ignore_nested_orfs", True)).lower(),
         strand=lambda wc: PSEUDOGENE_CONFIG.get("strand", "plus")
+    log: OUTPUT_DIR + "/logs/pseudogene/orfs_nt_hmm.log"
     shell:
         """
+        set -euo pipefail
         ORFfinder -in {input} \
             -g {params.g} \
             -s {params.s} \
             -ml {params.ml} \
             -n {params.n} \
             -strand {params.strand} \
-            -outfmt 1 > {output}
+            -outfmt 1 > {output} 2> {log}
         """
 
 rule get_orfs_aa_hmm:
@@ -34,15 +36,17 @@ rule get_orfs_aa_hmm:
         ml=lambda wc: PSEUDOGENE_CONFIG.get("min_orf_length", 30),
         n=lambda wc: str(PSEUDOGENE_CONFIG.get("ignore_nested_orfs", True)).lower(),
         strand=lambda wc: PSEUDOGENE_CONFIG.get("strand", "plus")
+    log: OUTPUT_DIR + "/logs/pseudogene/orfs_aa_hmm.log"
     shell:
         """
+        set -euo pipefail
         ORFfinder -in {input} \
             -g {params.g} \
             -s {params.s} \
             -ml {params.ml} \
             -n {params.n} \
             -strand {params.strand} \
-            -outfmt 0 > {output}
+            -outfmt 0 > {output} 2> {log}
         """
 
 rule consolidate_orfs_hmm:
@@ -52,5 +56,6 @@ rule consolidate_orfs_hmm:
     output:
         nt2 = OUTPUT_DIR + "/orfs.fasta.nt.filtered.hmm",
         aa2 = OUTPUT_DIR + "/orfs.fasta.aa.filtered.hmm"
+    log: OUTPUT_DIR + "/logs/pseudogene/consolidate_orfs.log"
     shell:
-        "python3 workflow/scripts/parse_orfs4.py {input.nt} {input.aa} {output.nt2} {output.aa2}"
+        "set -euo pipefail; python3 workflow/scripts/parse_orfs4.py {input.nt} {input.aa} {output.nt2} {output.aa2} 2> {log}"

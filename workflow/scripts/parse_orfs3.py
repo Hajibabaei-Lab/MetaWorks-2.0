@@ -100,7 +100,7 @@ lower_cutoff = percentile25 - (1.5 * iqr)
 upper_cutoff = percentile75 + (1.5 * iqr)
 
 # Append filtered longest ORFs (those within cutoff range) to the output file (cds.fasta).
-with open(output_file, "a") as out_f:
+with open(output_file, "w") as out_f:
     for otu in nt_length_longest:
         for orf in nt_length_longest[otu]:
             length_val = nt_length_longest[otu][orf]

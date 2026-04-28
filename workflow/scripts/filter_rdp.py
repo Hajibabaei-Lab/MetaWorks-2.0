@@ -44,10 +44,7 @@ def main():
     lc = p25 - (1.5 * iqr)
     uc = p75 + (1.5 * iqr)
 
-    # Get list of good ids (skip over ids with outlier scores)
     good_ids = [id_val for id_val, score in hmm_dict.items() if not (score < lc or score > uc)]
-    # Note: In this script we calculate good_ids but do not use them further.
-    # You could use them to filter the ORFs if desired.
 
     # -------------------------------
     # Parse filtered nt orfs FASTA and hash sequences
@@ -83,7 +80,7 @@ def main():
                 continue
             id_val = parts[0]
             record = "\t".join(parts[1:])
-            if id_val in orfs_dict:
+            if id_val in orfs_dict and id_val in good_ids:
                 seq = orfs_dict[id_val]
                 print(f"{id_val}\t{seq}\t{record}")
             # Else: do not print rows that were screened out

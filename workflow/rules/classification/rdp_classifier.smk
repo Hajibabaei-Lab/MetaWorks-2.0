@@ -15,6 +15,7 @@ rule taxonomic_assignment:
         options = lambda wildcards: rdp_options(config)
     shell:
         """
+        set -euo pipefail
         python3 workflow/scripts/parallel_rdp.py \
             --input {input} \
             --output {output} \

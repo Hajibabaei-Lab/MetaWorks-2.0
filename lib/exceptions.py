@@ -137,7 +137,7 @@ class PipelineExecutionError(MetaWorksError):
         super().__init__(message, suggestion, stage=stage, exit_code=exit_code, details=details)
 
 
-class RuntimeError(MetaWorksError):
+class MetaWorksRuntimeError(MetaWorksError):
     """Raised when runtime-specific operations fail."""
 
     def __init__(
@@ -147,14 +147,6 @@ class RuntimeError(MetaWorksError):
         suggestion: Optional[str] = None,
         details: Optional[str] = None,
     ):
-        """
-        Initialize RuntimeError.
-
-        Args:
-            message: Error message
-            runtime_type: Optional runtime type (conda, docker, singularity)
-            suggestion: Optional fix suggestion
-        """
         self.runtime_type = runtime_type
         super().__init__(message, suggestion, runtime_type=runtime_type, details=details)
 

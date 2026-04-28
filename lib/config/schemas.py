@@ -115,6 +115,9 @@ class ModuleConfig(BaseModel):
     compatible_workflows: List[str] = Field(default_factory=list)
     backend_variants: List[str] = Field(default_factory=list)
     internal: bool = False
+    activation: Optional[str] = None
+    stage: Optional[str] = None
+    additive: bool = False
     terminal_outputs: List[str] = Field(default_factory=list)
     parameters: Dict[str, Any] = Field(default_factory=dict)
     files: Optional[Dict[str, List[Dict[str, str]]]] = None

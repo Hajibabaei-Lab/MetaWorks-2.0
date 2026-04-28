@@ -1,26 +1,22 @@
-"""
-Asset management routes.
-
-This module handles all asset-related API endpoints (classifiers, adapters).
-"""
+"""Asset management routes."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from lib.exceptions import FileProcessingError
 
 from ..schemas import ListAssetsResponse, UploadResponse
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
-
     from ..config import Settings
 
 
-def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
-    """Register all asset-related routes with the FastAPI app."""
+def _build_asset_router(settings: "Settings") -> APIRouter:
+    """Build the asset router."""
+
+    router = APIRouter(tags=["assets"])
 
     def _save_upload(target_root: Path, file: UploadFile) -> UploadResponse:
         """Save an uploaded file to the target directory."""
@@ -30,7 +26,7 @@ def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
         target_path.write_bytes(content)
         return UploadResponse(name=file.filename, path=str(target_path))
 
-    @app.post("/classifiers", response_model=UploadResponse)
+    @router.post("/classifiers", response_model=UploadResponse)
     def upload_classifier(file: UploadFile = File(...)) -> UploadResponse:
         """Upload a classifier file."""
         try:
@@ -46,13 +42,13 @@ def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/classifiers", response_model=ListAssetsResponse)
+    @router.get("/classifiers", response_model=ListAssetsResponse)
     def list_classifiers() -> ListAssetsResponse:
         """List all available classifiers."""
         items = [p.name for p in settings.classifier_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
 
-    @app.post("/adapters", response_model=UploadResponse)
+    @router.post("/adapters", response_model=UploadResponse)
     def upload_adapter(file: UploadFile = File(...)) -> UploadResponse:
         """Upload an adapter file."""
         try:
@@ -68,13 +64,13 @@ def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/adapters", response_model=ListAssetsResponse)
+    @router.get("/adapters", response_model=ListAssetsResponse)
     def list_adapters() -> ListAssetsResponse:
         """List all available adapters."""
         items = [p.name for p in settings.adapter_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
 
-    @app.post("/delete/classifiers/{name}", response_model=ListAssetsResponse)
+    @router.post("/delete/classifiers/{name}", response_model=ListAssetsResponse)
     def delete_classifier(name: str) -> ListAssetsResponse:
         """Delete a classifier file."""
         target = settings.classifier_root / name
@@ -83,7 +79,7 @@ def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
         items = [p.name for p in settings.classifier_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
 
-    @app.post("/delete/adapters/{name}", response_model=ListAssetsResponse)
+    @router.post("/delete/adapters/{name}", response_model=ListAssetsResponse)
     def delete_adapter(name: str) -> ListAssetsResponse:
         """Delete an adapter file."""
         target = settings.adapter_root / name
@@ -91,3 +87,14 @@ def register_asset_routes(app: "FastAPI", settings: "Settings") -> None:
             target.unlink()
         items = [p.name for p in settings.adapter_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
+
+    return router
+
+
+def register_asset_routes(app, settings: "Settings", *, prefix: str = "", include_in_schema: bool = True) -> None:
+    """Register all asset-related routes with the FastAPI app."""
+    app.include_router(
+        _build_asset_router(settings),
+        prefix=prefix,
+        include_in_schema=include_in_schema,
+    )

@@ -13,6 +13,13 @@ table_file = sys.argv[1]
 rdp_file = sys.argv[2]
 # Optional header parameter (if provided, print as the first line of output)
 header = sys.argv[3] if len(sys.argv) >= 4 else None
+if len(sys.argv) >= 5:
+    try:
+        min_abund = int(sys.argv[4])
+    except ValueError:
+        sys.exit(f"Error: min_abund must be an integer, got '{sys.argv[4]}'")
+else:
+    min_abund = 3
 
 # --------------------------
 # Parse the RDP taxonomic assignment file.
@@ -88,7 +95,7 @@ for global_otu, tax_assignment in assignment.items():
     if global_otu in table_data:
         sample_abundances = table_data[global_otu]
         for sample, abund in sample_abundances.items():
-            if abund >= 3:
+            if abund >= min_abund:
                 print(f"{global_otu},{sample},{abund},{tax_assignment}")
     else:
         print(f"Cannot find global_otu {global_otu} in table", file=sys.stderr)

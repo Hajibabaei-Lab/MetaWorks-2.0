@@ -31,64 +31,6 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "depends_on": [],
         "checkpoints": [],
     },
-    "preprocessing": {
-        "module": {
-            "name": "preprocessing",
-            "version": "2.0.0",
-            "description": "Preprocess raw reads with SeqPrep.",
-            "author": "Hajibabaei Lab",
-            "enabled_by_default": True,
-        },
-        "directory": "preprocessing",
-        "snakefile": "workflow/rules/preprocessing/preprocessing.smk",
-        "config_section": "preprocessing",
-        "compatible_workflows": ["esv"],
-        "activation": "enabled",
-        "stage": "preprocessing",
-        "terminal_outputs": [],
-        "validation": [
-            {
-                "parameter": "quality_score",
-                "type": "integer",
-                "min": 0,
-                "max": 40,
-                "description": "Phred quality score cutoff.",
-            },
-            {
-                "parameter": "min_overlap",
-                "type": "integer",
-                "min": 10,
-                "max": 100,
-                "description": "Minimum overlap length.",
-            },
-            {
-                "parameter": "max_mismatch",
-                "type": "float",
-                "min": 0.0,
-                "max": 0.5,
-                "description": "Maximum mismatch fraction.",
-            },
-            {
-                "parameter": "min_match",
-                "type": "float",
-                "min": 0.0,
-                "max": 1.0,
-                "description": "Minimum matching overlap fraction.",
-            },
-        ],
-        "resources": {
-            "default": {"threads": 1, "memory_mb": 2000, "time_minutes": 30},
-            "high_load": {"threads": 2, "memory_mb": 4000, "time_minutes": 45},
-        },
-        "depends_on": [],
-        "checkpoints": [
-            {
-                "name": "preprocessing_complete",
-                "trigger": "Read preprocessing complete",
-                "output": "{output_dir}/checkpoints/preprocessing_complete.done",
-            }
-        ],
-    },
     "trimming": {
         "module": {
             "name": "trimming",
@@ -138,7 +80,7 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "default": {"threads": 1, "memory_mb": 4000, "time_minutes": 60},
             "high_load": {"threads": 2, "memory_mb": 8000, "time_minutes": 90},
         },
-        "depends_on": ["preprocessing"],
+        "depends_on": [],
         "checkpoints": [
             {
                 "name": "trimming_complete",
@@ -571,7 +513,7 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
     """Resolve durable workflow targets for rule all."""
     output_dir = config["pipeline"]["output_dir"]
     samples_list = list(samples)
-    stage_rank = {"preprocessing": 0, "trimming": 1, "denoising": 2, "classification": 3}
+    stage_rank = {"trimming": 0, "denoising": 1, "classification": 2}
 
     included = _resolve_included_module_names(config)
     highest_stage: Optional[str] = None
@@ -584,13 +526,6 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
             continue
         if highest_stage is None or stage_rank[stage] > stage_rank[highest_stage]:
             highest_stage = stage
-
-    if highest_stage == "preprocessing":
-        raise ValueError(
-            "modules.preprocessing=true cannot be the terminal stage because "
-            "preprocessing only emits temp() outputs. Enable trimming, denoising, "
-            "classification, or stats for durable workflow targets."
-        )
 
     targets: list[str] = []
     for module_name in included:

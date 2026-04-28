@@ -6,7 +6,7 @@ DENOISING_CONFIG = get_module_config(config, "denoising")
 rule edit_fasta_header1:
     input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
     output: temp(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp")
-    shell: "python3 workflow/scripts/rename_fasta_gzip.py {input} > {output}"
+    shell: "set -euo pipefail; python3 workflow/scripts/rename_fasta_gzip.py {input} > {output}"
 
 # Global pooling path
 if DENOISING_CONFIG.get("pool_samples", True):
@@ -17,7 +17,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         output:
             temp(config["pipeline"]["output_dir"] + "/cat.fasta.tmp")
         shell:
-            "cat {input} > {output}"
+            "set -euo pipefail; cat {input} > {output}"
 
     rule edit_fasta_header2:
         input:
@@ -25,7 +25,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         output:
             temp(config["pipeline"]["output_dir"] + "/cat.fasta")
         shell:
-            "sed -e 's/-/_/g' {input} > {output}"
+            "set -euo pipefail; sed -e '/^>/s/-/_/g' {input} > {output}"
 
     rule compress:
         input:
@@ -33,7 +33,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         output:
             config["pipeline"]["output_dir"] + "/cat.fasta.gz"
         shell:
-            "gzip -c {input} > {output}"
+            "set -euo pipefail; gzip -c {input} > {output}"
 
     rule dereplicate:
         input:
@@ -43,7 +43,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         log:
             config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
-            "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
+            "set -euo pipefail; vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
 
     rule denoise:
         input:
@@ -55,7 +55,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         params:
             minsize = DENOISING_CONFIG.get("min_cluster_size", 8)
         shell:
-            "vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
+            "set -euo pipefail; vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
 
     rule chimera_removal:
         input:
@@ -65,7 +65,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         log:
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
-            "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
+            "set -euo pipefail; vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
 
     rule create_ESV_table:
         input:
@@ -77,7 +77,7 @@ if DENOISING_CONFIG.get("pool_samples", True):
         log:
             config["pipeline"]["output_dir"] + "/table.log"
         shell:
-            "vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
+            "set -euo pipefail; vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
 
 
 # Per-sample processing path
@@ -89,7 +89,7 @@ else:
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.tagged")
         shell:
-            "sed -e 's/-/_/g' {input} >> {output}"
+            "set -euo pipefail; sed -e '/^>/s/-/_/g' {input} > {output}"
 
     rule dereplicate_single:
         input:
@@ -97,7 +97,7 @@ else:
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp")
         shell:
-            "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout"
+            "set -euo pipefail; vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout"
 
     rule denoise:
         input:
@@ -109,7 +109,7 @@ else:
         params:
             minsize = DENOISING_CONFIG.get("min_cluster_size", 8)
         shell:
-            "vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
+            "set -euo pipefail; vsearch --cluster_unoise {input} --sizein --sizeout --minsize {params.minsize} --centroids {output} --log {log}"
 
     rule concatenate_for_global_analysis:
         input:
@@ -117,7 +117,7 @@ else:
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
         shell:
-            "cat {input} > {output}"
+            "set -euo pipefail; cat {input} > {output}"
 
     rule dereplicate:
         input:
@@ -127,7 +127,7 @@ else:
         log:
             config["pipeline"]["output_dir"] + "/dereplication.log"
         shell:
-            "vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
+            "set -euo pipefail; vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout --log {log}"
 
     rule compress:
         input:
@@ -135,7 +135,7 @@ else:
         output:
             config["pipeline"]["output_dir"] + "/cat.uniques.gz"
         shell:
-            "gzip -c {input} > {output}"
+            "set -euo pipefail; gzip -c {input} > {output}"
 
     rule chimera_removal:
         input:
@@ -145,7 +145,7 @@ else:
         log:
             config["pipeline"]["output_dir"] + "/chimeraRemoval.log"
         shell:
-            "vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
+            "set -euo pipefail; vsearch --uchime3_denovo {input} --sizein --xsize --nonchimeras {output} --relabel 'Zotu' --log {log}"
 
     rule create_ESV_table:
         input:
@@ -157,7 +157,7 @@ else:
         log:
             config["pipeline"]["output_dir"] + "/{sample}.table.log"
         shell:
-            "vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
+            "set -euo pipefail; vsearch --threads {threads} --search_exact {input.vsearch_global} --db {input.db} --otutabout {output} --log {log}"
 
     rule merge_sample_ESV_tables:
         input:
@@ -165,4 +165,4 @@ else:
         output:
             config["pipeline"]["output_dir"] + "/ESV.table.tmp"
         shell:
-            "python3 workflow/scripts/merge_esv_tables.py {input.esv_tables} > {output}"
+            "set -euo pipefail; python3 workflow/scripts/merge_esv_tables.py {input.esv_tables} > {output}"

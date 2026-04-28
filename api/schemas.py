@@ -140,6 +140,10 @@ class RunStatus(BaseModel):
     keep_outputs: Optional[bool] = None
 
 
+class RunListResponse(BaseModel):
+    runs: List[RunStatus]
+
+
 class LogResponse(BaseModel):
     run_id: str
     tail: List[str]
@@ -184,3 +188,5 @@ class PathsResponse(BaseModel):
     runtime_cache: str
     allowed_runtimes: List[str]
     retention_policy: str
+    default_runtime: str
+    container_image: str
