@@ -9,8 +9,8 @@ rule pair_reads:
         f = lambda wildcards: get_fastq_path(wildcards.sample, 1),
         r = lambda wildcards: get_fastq_path(wildcards.sample, 2)
     output:
-        X1 = temp("{sample}_R1.out"),
-        X2 = temp("{sample}_R2.out"),
+        X1 = temp(config["pipeline"]["output_dir"] + "/{sample}_R1.out"),
+        X2 = temp(config["pipeline"]["output_dir"] + "/{sample}_R2.out"),
         s = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
     params:
         q = lambda wc: PREPROCESSING_CONFIG.get("quality_score", 13),
@@ -67,6 +67,7 @@ rule trim_linked_adapters:
             {params.rc} \
             --prefix {{name}} \
             --discard-untrimmed \
+            --fasta \
             --output {output} \
             {input.paired} \
             2>&1 | tee {log}

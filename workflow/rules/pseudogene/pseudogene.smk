@@ -8,8 +8,6 @@ PSEUDOGENE_SUBMODULE_CONFIG = {
     "pseudogene_filtering": config.get("pseudogene_filtering", {}),
 }
 
-# Pass pseudogene_filtering config through to ORF submodules so user params
-# (genetic_code, min_orf_length, etc.) are actually used.
 module orfs_hmm:
     snakefile: "orfs_hmm.smk"
     config: PSEUDOGENE_SUBMODULE_CONFIG
@@ -35,8 +33,9 @@ if pseudogene_enabled:
             output: config["pipeline"]["output_dir"] + "/taxon.zotus"
             params:
                 taxon1 = PSEUDOGENE_CONFIG.get("taxon1", "")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "grep {params.taxon1} {input} | awk '{{print $1}}' > {output}"
+                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | awk '{{print $1}}' > \"{output}\" || true"
     else:
         rule subset_taxonomy_by_taxon1_and_taxon2:
             input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
@@ -44,16 +43,18 @@ if pseudogene_enabled:
             params:
                 taxon1 = PSEUDOGENE_CONFIG.get("taxon1", ""),
                 taxon2 = PSEUDOGENE_CONFIG.get("taxon2", "")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "grep {params.taxon1} {input} | grep {params.taxon2} | awk '{{print $1}}' > {output}"
+                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | grep {params.taxon2} | awk '{{print $1}}' > \"{output}\" || true"
 
     rule subset_ESV_sequences_by_taxon:
         input:
             tax = config["pipeline"]["output_dir"] + "/taxon.zotus",
             fas = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output: config["pipeline"]["output_dir"] + "/chimera.denoised.nonchimeras.taxon"
+        log: config["pipeline"]["output_dir"] + "/logs/pseudogene/esv_subset.log"
         shell:
-            "python3 workflow/scripts/get_taxon_only.py {input.tax} {input.fas} > {output}"
+            "set -euo pipefail; python3 workflow/scripts/get_taxon_only.py {input.tax} {input.fas} > {output}"
 
     ############################
     # Strategy 1: Longest ORFs
@@ -70,24 +71,27 @@ if pseudogene_enabled:
             output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
             params:
                 marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_rdp.log"
             shell:
-                "python3 workflow/scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
+                "set -euo pipefail; python3 workflow/scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
 
         rule filter_ESV_table:
             input:
                 table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
                 orf = config["pipeline"]["output_dir"] + "/longest.orfs.fasta"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_esv_table.log"
             shell:
-                "python3 workflow/scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
+                "set -euo pipefail; python3 workflow/scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
 
         rule add_good_orfs_to_taxonomy:
             input:
                 orf = config["pipeline"]["output_dir"] + "/longest.orfs.fasta",
                 rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp"
             output: temp(config["pipeline"]["output_dir"] + "/taxonomy_ORF.tsv")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/add_orfs_taxonomy.log"
             shell:
-                "python3 workflow/scripts/add_seqs_to_tax4.py {input.orf} {input.rdp} >> {output}"
+                "set -euo pipefail; python3 workflow/scripts/add_seqs_to_tax4.py {input.orf} {input.rdp} > {output}"
 
     ############################
     # Strategy 2: HMM-based ORFs
@@ -103,8 +107,9 @@ if pseudogene_enabled:
                 orf = config["pipeline"]["output_dir"] + "/orfs.fasta.aa.filtered.hmm",
                 hmm = PSEUDOGENE_CONFIG.get("hmm_profile", "config/hmm/bold.hmm")
             output: config["pipeline"]["output_dir"] + "/hmm.txt"
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/hmmscan.log"
             shell:
-                "hmmscan --tblout {output} {input.hmm} {input.orf}"
+                "set -euo pipefail; hmmscan --tblout {output} {input.hmm} {input.orf} 2> {log}"
 
         rule add_good_orf_sequences_to_taxonomy:
             input:
@@ -112,10 +117,9 @@ if pseudogene_enabled:
                 rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp",
                 orfs = config["pipeline"]["output_dir"] + "/orfs.fasta.nt.filtered.hmm"
             output: config["pipeline"]["output_dir"] + "/taxonomy_ORF.tsv"
-            params:
-                marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/add_orfs_taxonomy.log"
             shell:
-                "python3 workflow/scripts/filter_rdp.py {input.hmmer} {input.orfs} {input.rdp} {params.marker} >> {output}"
+                "set -euo pipefail; python3 workflow/scripts/filter_rdp.py {input.hmmer} {input.orfs} {input.rdp} > {output}"
 
         rule filter_rdp:
             input:
@@ -124,16 +128,18 @@ if pseudogene_enabled:
             output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
             params:
                 marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_rdp.log"
             shell:
-                "python3 workflow/scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
+                "set -euo pipefail; python3 workflow/scripts/filter_rdp_taxonomy.py {input.orf} {input.rdp} {params.marker} > {output}"
 
         rule filter_ESV_table:
             input:
                 table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
                 orf = config["pipeline"]["output_dir"] + "/orfs.fasta.nt.filtered.hmm"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
+            log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_esv_table.log"
             shell:
-                "python3 workflow/scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
+                "set -euo pipefail; python3 workflow/scripts/filter_ESV_table.py {input.table} {input.orf} > {output}"
 
     else:
         raise ValueError(
@@ -142,15 +148,19 @@ if pseudogene_enabled:
         )
 else:
     rule copy_unfiltered_taxonomy:
-        input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
+        input:
+            rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp",
+            fas = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
         params:
             marker = CLASSIFICATION_CONFIG.get("marker", "COI")
+        log: config["pipeline"]["output_dir"] + "/logs/pseudogene/copy_taxonomy.log"
         shell:
-            "python3 workflow/scripts/filter_rdp_taxonomy.py {input} {input} {params.marker} > {output}"
+            "set -euo pipefail; python3 workflow/scripts/filter_rdp_taxonomy.py {input.fas} {input.rdp} {params.marker} > {output}"
 
     rule copy_unfiltered_esv_table:
         input: config["pipeline"]["output_dir"] + "/ESV.table.tmp"
         output: config["pipeline"]["output_dir"] + "/ESV.table"
+        log: config["pipeline"]["output_dir"] + "/logs/pseudogene/copy_esv_table.log"
         shell:
-            "cp {input} {output}"
+            "set -euo pipefail; cp {input} {output}"

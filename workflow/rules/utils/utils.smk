@@ -1,9 +1,16 @@
 # rules/utils.smk
 
 import os
+import sys
 import glob
 import pandas as pd
 import re
+
+_scripts_dir = os.path.join(str(REPO_ROOT), "workflow", "scripts")
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+
+from marker_defs import MARKER_TO_CONDITION, HEADERS as MARKER_HEADERS, get_condition, get_header  # noqa: E402
 
 # Extracts sample name from FASTQ file name
 def extract_sample_name_from_file(filename):
@@ -27,7 +34,7 @@ if config["input"]["sample_source"] == "csv":
 
 elif config["input"]["sample_source"] == "folder":
     FASTQ_FOLDER = config["input"]["fastq_dir"]
-    samples = glob.glob(os.path.join(FASTQ_FOLDER, "*_R1_001.fastq.gz"))
+    samples = sorted(glob.glob(os.path.join(FASTQ_FOLDER, "*_R1_001.fastq.gz")))
     SAMPLES_UNIQUE = [extract_sample_name_from_file(f) for f in samples]
 else:
     raise ValueError("Unknown sample_source: must be 'csv' or 'folder'")
@@ -57,42 +64,15 @@ def rdp_options(config):
             raise ValueError(f"Unknown builtin_classifier: {builtin_classifier}")
 
 
-# Marker categories for downstream logic
-tax3_abund6 = ['COI', 'rbcL_eukaryota', 'rbcL_landPlant', '12S_fish', '12S_vertebrate', '16S_vertebrate']
-tax3_abund7 = ['16S', '28S_fungi']
-tax3_abund9 = ['18S_eukaryota']
-tax3_abund10 = ['18S_diatom', 'rbcL_diatom']
-orf3_tax4_abund12 = ['COI', 'rbcL_landPlant', 'rbcL_eukaryota']
-orf3_tax4_abund11 = ['rbcL_diatom']
-
-HEADERS = {
-    "condition6": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
-    "condition7": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Domain,DomainRank,dBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP",
-    "condition8": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
-    "condition9": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP",
-    "condition10": "GlobalESV,SampleName,ESVsize,ESVseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
-    "condition11": "GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,Domain,DomainRank,dBP,Kingdom,KingdomRank,kBP,SubKingdom,SubKingdomRank,skBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
-    "condition12": "GlobalESV,SampleName,ESVsize,ORFseq,Strand,Root,RootRank,rBP,SuperKingdom,SuperKingdomRank,skBP,Kingdom,KingdomRank,kBP,Phylum,PhylumRank,pBP,Class,ClassRank,cBP,Order,OrderRank,oBP,Family,FamilyRank,fBP,Genus,GenusRank,gBP,Species,SpeciesRank,sBP",
-    "default": "",
-}
+HEADERS = MARKER_HEADERS
 
 def condition_key(config):
     """Determine condition key based on marker type."""
-    marker = config["classification"]["marker"]
-    if marker in tax3_abund6:
-        return "condition6"
-    elif marker in tax3_abund7:
-        return "condition7"
-    elif marker in tax3_abund9:
-        return "condition9"
-    elif marker in tax3_abund10:
-        return "condition10"
-    elif marker in orf3_tax4_abund11:
-        return "condition11"
-    elif marker in orf3_tax4_abund12:
-        return "condition12"
-    else:
-        print("Unknown marker for results configuration.")
+    marker = config.get("classification", {}).get("marker", "COI")
+    try:
+        return get_condition(marker)
+    except ValueError:
+        print(f"Unknown marker '{marker}' for results configuration.")
         return "default"
 
 
