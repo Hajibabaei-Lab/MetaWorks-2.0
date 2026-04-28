@@ -1,13 +1,9 @@
-"""
-Configuration management routes.
-
-This module handles all configuration-related API endpoints including profiles.
-"""
+"""Configuration management routes."""
 
 from typing import TYPE_CHECKING
 
 import yaml
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from lib.config import ConfigManager
@@ -23,20 +19,20 @@ from ..schemas import (
 )
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
-
     from ..config import Settings
     from ..job_manager import JobManager
 
 
-def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Settings") -> None:
-    """Register all configuration-related routes with the FastAPI app."""
+def _build_config_router(manager: "JobManager", settings: "Settings") -> APIRouter:
+    """Build the configuration router."""
+
+    router = APIRouter(tags=["config"])
 
     def _get_config_manager() -> ConfigManager:
         """Get a ConfigManager instance with repo root from settings."""
         return ConfigManager(repo_root=str(settings.repo_root))
 
-    @app.get("/profiles", response_model=ProfileListResponse)
+    @router.get("/profiles", response_model=ProfileListResponse)
     def list_profiles() -> ProfileListResponse:
         """List all available configuration profiles."""
         try:
@@ -51,7 +47,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
                 detail=f"Failed to list profiles: {str(exc)}",
             ) from exc
 
-    @app.get("/profiles/{profile_name}")
+    @router.get("/profiles/{profile_name}")
     def get_profile(profile_name: str) -> dict:
         """Get a specific profile's configuration."""
         try:
@@ -69,7 +65,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
                 detail=f"Failed to load profile: {str(exc)}",
             ) from exc
 
-    @app.get("/configs/defaults")
+    @router.get("/configs/defaults")
     def get_defaults() -> dict:
         """Get the pipeline defaults configuration."""
         try:
@@ -82,7 +78,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
                 detail=f"Failed to load defaults: {str(exc)}",
             ) from exc
 
-    @app.post("/configs/render", response_model=RenderConfigResponse)
+    @router.post("/configs/render", response_model=RenderConfigResponse)
     def render_config(payload: RenderConfigWithProfileRequest) -> RenderConfigResponse:
         """Render configuration with profile and overrides."""
         try:
@@ -121,7 +117,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/configs/defaults/{workflow}", response_class=PlainTextResponse)
+    @router.get("/configs/defaults/{workflow}", response_class=PlainTextResponse)
     def get_default_config(workflow: WorkflowType) -> str:
         """Get default configuration for a workflow (legacy endpoint)."""
         # Load defaults and render with no profile
@@ -138,7 +134,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
                 detail=f"Failed to load defaults: {str(exc)}",
             ) from exc
 
-    @app.get("/configs/defaults/{workflow}/sections", response_model=ConfigSectionsResponse)
+    @router.get("/configs/defaults/{workflow}/sections", response_model=ConfigSectionsResponse)
     def get_default_config_sections(workflow: WorkflowType) -> ConfigSectionsResponse:
         """Get configuration sections for a workflow."""
         try:
@@ -159,7 +155,7 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
             ) from exc
         return ConfigSectionsResponse(workflow=workflow, sections=sections)
 
-    @app.get("/settings/paths")
+    @router.get("/settings/paths")
     def settings_paths():
         """Get system paths."""
         from ..schemas import PathsResponse
@@ -177,4 +173,24 @@ def register_config_routes(app: "FastAPI", manager: "JobManager", settings: "Set
             runtime_cache=str(settings.singularity_cache),
             allowed_runtimes=allowed_runtimes,
             retention_policy=str(settings.retention_policy or "until_download").lower(),
+            default_runtime=str(settings.default_runtime or "docker").lower(),
+            container_image=str(settings.container_image or "docker://metaworks:latest"),
         )
+
+    return router
+
+
+def register_config_routes(
+    app,
+    manager: "JobManager",
+    settings: "Settings",
+    *,
+    prefix: str = "",
+    include_in_schema: bool = True,
+) -> None:
+    """Register all configuration-related routes with the FastAPI app."""
+    app.include_router(
+        _build_config_router(manager, settings),
+        prefix=prefix,
+        include_in_schema=include_in_schema,
+    )

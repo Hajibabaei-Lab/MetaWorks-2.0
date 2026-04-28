@@ -2,6 +2,18 @@
 
 This guide covers deploying MetaWorks 2.0 in various environments: local development, production servers, and HPC clusters.
 
+## Recommended 2026 Deployment
+
+MetaWorks now supports a split deployment:
+
+- `MetaWorks-2.0` stays the backend runner and exposes `/api/*`
+- `metaworks-ui` is a separate frontend project served in its own container
+- `deploy/docker-compose.yml` in the backend repo runs the split stack with Caddy proxying `/api/*`
+- the default split deployment uses the backend container's own `conda` runtime so users only need
+  Docker/Compose on the host
+
+For new deployments, prefer the split stack over the older backend-served static UI.
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)

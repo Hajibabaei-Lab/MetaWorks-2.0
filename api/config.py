@@ -92,6 +92,14 @@ class Settings(BaseSettings):
     default_cores: int = Field(default=32, description="Cores requested per job.")
     default_mem_gb: int = Field(default=120, description="Memory requested per job.")
     log_tail_lines: int = Field(default=200, description="Default lines to return for log tail.")
+    serve_legacy_ui: bool = Field(
+        default=True,
+        description="Serve the legacy static UI from the backend process.",
+    )
+    cors_allowed_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
+        description="Comma-separated origins allowed to access the API directly during development.",
+    )
 
     class Config:
         env_prefix = "METAWORKS_"

@@ -464,6 +464,16 @@ class JobManager:
                 self._set_metadata(run_id, record)
         return RunStatus(**record)
 
+    def list_runs(self) -> List[RunStatus]:
+        """List all tracked runs sorted newest first."""
+        runs: List[RunStatus] = []
+        for run_id in sorted(self._all_runs().keys(), reverse=True):
+            try:
+                runs.append(self.get_status(run_id))
+            except StateManagementError:
+                logger.debug("Skipping stale run metadata for %s during list_runs", run_id)
+        return runs
+
     def cancel_run(self, run_id: str) -> RunStatus:
         metadata = self._get_metadata(run_id)
         if not metadata:

@@ -5,6 +5,10 @@
 
 FROM condaforge/mambaforge:latest
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY environment.yml /tmp/environment.yml
 RUN mamba env create -f /tmp/environment.yml \
     && mamba clean --all --yes

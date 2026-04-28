@@ -1,12 +1,8 @@
-"""
-Run management routes.
-
-This module handles all run-related API endpoints.
-"""
+"""Run management routes."""
 
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
@@ -21,20 +17,32 @@ from ..schemas import (
     ArtifactResponse,
     DeleteRunResponse,
     LogResponse,
+    RunListResponse,
     RunStatus,
     RunSubmissionRequest,
 )
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
-
     from ..job_manager import JobManager
 
 
-def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa: C901
-    """Register all run-related routes with the FastAPI app."""
+def _build_run_router(manager: "JobManager") -> APIRouter:  # noqa: C901
+    """Build the run router."""
 
-    @app.post("/runs", response_model=RunStatus)
+    router = APIRouter(tags=["runs"])
+
+    @router.get("/runs", response_model=RunListResponse)
+    def list_runs() -> RunListResponse:
+        """List tracked runs."""
+        try:
+            return RunListResponse(runs=manager.list_runs())
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error: {str(exc)}",
+            ) from exc
+
+    @router.post("/runs", response_model=RunStatus)
     def submit_run(payload: RunSubmissionRequest) -> RunStatus:
         """Submit a new run for execution."""
         try:
@@ -56,7 +64,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
             ) from exc
         return status
 
-    @app.get("/runs/{run_id}", response_model=RunStatus)
+    @router.get("/runs/{run_id}", response_model=RunStatus)
     def run_status(run_id: str) -> RunStatus:
         """Get the status of a specific run."""
         try:
@@ -72,7 +80,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/runs/{run_id}/logs", response_model=LogResponse)
+    @router.get("/runs/{run_id}/logs", response_model=LogResponse)
     def run_logs(run_id: str, lines: Optional[int] = None) -> LogResponse:
         """Get recent log lines for a run."""
         try:
@@ -94,7 +102,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/runs/{run_id}/logs/download")
+    @router.get("/runs/{run_id}/logs/download")
     def download_log_file(run_id: str) -> FileResponse:
         """Download the full log file for a run."""
         from pathlib import Path
@@ -114,7 +122,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
             )
         return FileResponse(log_path, filename=f"{run_id}-snakemake.log", media_type="text/plain")
 
-    @app.post("/runs/{run_id}/cancel", response_model=RunStatus)
+    @router.post("/runs/{run_id}/cancel", response_model=RunStatus)
     def cancel_run(run_id: str) -> RunStatus:
         """Cancel a running run."""
         try:
@@ -130,7 +138,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 detail=f"Failed to cancel run: {str(exc)}",
             ) from exc
 
-    @app.get("/runs/{run_id}/artifacts", response_model=ArtifactResponse)
+    @router.get("/runs/{run_id}/artifacts", response_model=ArtifactResponse)
     def package_artifacts(run_id: str) -> ArtifactResponse:
         """Package run artifacts into a tarball."""
         try:
@@ -151,7 +159,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
 
-    @app.get("/runs/{run_id}/artifacts/download")
+    @router.get("/runs/{run_id}/artifacts/download")
     def download_artifact(run_id: str) -> FileResponse:
         """Download the artifacts tarball for a run."""
         from pathlib import Path
@@ -186,7 +194,7 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
             background=BackgroundTask(manager.cleanup_after_download, run_id, str(archive_path)),
         )
 
-    @app.delete("/runs/{run_id}", response_model=DeleteRunResponse)
+    @router.delete("/runs/{run_id}", response_model=DeleteRunResponse)
     def delete_run(run_id: str) -> DeleteRunResponse:
         """Delete a run and its associated files."""
         try:
@@ -207,3 +215,20 @@ def register_run_routes(app: "FastAPI", manager: "JobManager") -> None:  # noqa:
                 status_code=500,
                 detail=f"Unexpected error: {str(exc)}",
             ) from exc
+
+    return router
+
+
+def register_run_routes(
+    app,
+    manager: "JobManager",
+    *,
+    prefix: str = "",
+    include_in_schema: bool = True,
+) -> None:
+    """Register all run-related routes with the FastAPI app."""
+    app.include_router(
+        _build_run_router(manager),
+        prefix=prefix,
+        include_in_schema=include_in_schema,
+    )
