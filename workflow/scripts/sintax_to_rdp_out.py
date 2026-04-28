@@ -30,92 +30,57 @@ class RankSpec:
     accepted_codes: Tuple[str, ...]
 
 
-def marker_rank_specs(marker: str) -> List[RankSpec]:
-    # These specs mirror the column layouts used by:
-    # - python_scripts/rdp_tsv_to_csv.py
-    # - python_scripts/filter_rdp_taxonomy.py
-    tax3_abund6 = {
-        "COI",
-        "rbcL_eukaryota",
-        "rbcL_landPlant",
-        "12S_fish",
-        "12S_vertebrate",
-        "16S_vertebrate",
-    }
-    tax3_abund7 = {"16S", "28S_fungi"}
-    tax3_abund9 = {"18S_eukaryota"}
+_CODE_MAP: Dict[str, Tuple[str, ...]] = {
+    "Root": ("root", "r"),
+    "SuperKingdom": ("sk", "superkingdom", "d"),
+    "Domain": ("d", "domain"),
+    "SubKingdom": ("sk", "subkingdom"),
+    "Kingdom": ("k", "kingdom"),
+    "Phylum": ("p", "phylum"),
+    "Class": ("c", "class"),
+    "Order": ("o", "order"),
+    "Family": ("f", "family"),
+    "Genus": ("g", "genus"),
+    "Species": ("s", "species"),
+}
 
-    # Extra marker layout used by filter_rdp_taxonomy.py
-    with_subkingdom = {"rbcL_diatom"}
-    its_fungi = {"ITS_fungi"}
+_BP_MAP: Dict[str, str] = {
+    "Root": "rBP",
+    "SuperKingdom": "skBP",
+    "Domain": "dBP",
+    "SubKingdom": "skBP",
+    "Kingdom": "kBP",
+    "Phylum": "pBP",
+    "Class": "cBP",
+    "Order": "oBP",
+    "Family": "fBP",
+    "Genus": "gBP",
+    "Species": "sBP",
+}
+
+
+def marker_rank_specs(marker: str) -> List[RankSpec]:
+    from marker_defs import get_rank_specs as _get_rank_specs
 
     marker = marker.strip()
+    try:
+        specs = _get_rank_specs(marker)
+    except ValueError:
+        raise SystemExit(
+            f"Unsupported marker {marker!r} for SINTAX conversion. "
+            "Add it to marker_defs.MARKER_TO_CONDITION."
+        )
 
-    if marker in tax3_abund6:
-        return [
-            RankSpec("Root", "RootRank", "rBP", "root", ("root", "r")),
-            RankSpec("SuperKingdom", "SuperKingdomRank", "skBP", "superkingdom", ("sk", "superkingdom", "d")),
-            RankSpec("Kingdom", "KingdomRank", "kBP", "kingdom", ("k", "kingdom")),
-            RankSpec("Phylum", "PhylumRank", "pBP", "phylum", ("p", "phylum")),
-            RankSpec("Class", "ClassRank", "cBP", "class", ("c", "class")),
-            RankSpec("Order", "OrderRank", "oBP", "order", ("o", "order")),
-            RankSpec("Family", "FamilyRank", "fBP", "family", ("f", "family")),
-            RankSpec("Genus", "GenusRank", "gBP", "genus", ("g", "genus")),
-            RankSpec("Species", "SpeciesRank", "sBP", "species", ("s", "species")),
-        ]
-
-    if marker in tax3_abund7:
-        return [
-            RankSpec("Domain", "DomainRank", "dBP", "domain", ("d", "domain")),
-            RankSpec("Phylum", "PhylumRank", "pBP", "phylum", ("p", "phylum")),
-            RankSpec("Class", "ClassRank", "cBP", "class", ("c", "class")),
-            RankSpec("Order", "OrderRank", "oBP", "order", ("o", "order")),
-            RankSpec("Family", "FamilyRank", "fBP", "family", ("f", "family")),
-            RankSpec("Genus", "GenusRank", "gBP", "genus", ("g", "genus")),
-        ]
-
-    if marker in tax3_abund9:
-        return [
-            RankSpec("Root", "RootRank", "rBP", "root", ("root", "r")),
-            RankSpec("Domain", "DomainRank", "dBP", "domain", ("d", "domain")),
-            RankSpec("Kingdom", "KingdomRank", "kBP", "kingdom", ("k", "kingdom")),
-            RankSpec("Phylum", "PhylumRank", "pBP", "phylum", ("p", "phylum")),
-            RankSpec("Class", "ClassRank", "cBP", "class", ("c", "class")),
-            RankSpec("Order", "OrderRank", "oBP", "order", ("o", "order")),
-            RankSpec("Family", "FamilyRank", "fBP", "family", ("f", "family")),
-            RankSpec("Genus", "GenusRank", "gBP", "genus", ("g", "genus")),
-        ]
-
-    if marker in with_subkingdom:
-        return [
-            RankSpec("Root", "RootRank", "rBP", "root", ("root", "r")),
-            RankSpec("Domain", "DomainRank", "dBP", "domain", ("d", "domain")),
-            RankSpec("Kingdom", "KingdomRank", "kBP", "kingdom", ("k", "kingdom")),
-            RankSpec("SubKingdom", "SubKingdomRank", "skBP", "subkingdom", ("sk", "subkingdom")),
-            RankSpec("Phylum", "PhylumRank", "pBP", "phylum", ("p", "phylum")),
-            RankSpec("Class", "ClassRank", "cBP", "class", ("c", "class")),
-            RankSpec("Order", "OrderRank", "oBP", "order", ("o", "order")),
-            RankSpec("Family", "FamilyRank", "fBP", "family", ("f", "family")),
-            RankSpec("Genus", "GenusRank", "gBP", "genus", ("g", "genus")),
-            RankSpec("Species", "SpeciesRank", "sBP", "species", ("s", "species")),
-        ]
-
-    if marker in its_fungi:
-        return [
-            RankSpec("Root", "RootRank", "rBP", "root", ("root", "r")),
-            RankSpec("Kingdom", "KingdomRank", "kBP", "kingdom", ("k", "kingdom")),
-            RankSpec("Phylum", "PhylumRank", "pBP", "phylum", ("p", "phylum")),
-            RankSpec("Class", "ClassRank", "cBP", "class", ("c", "class")),
-            RankSpec("Order", "OrderRank", "oBP", "order", ("o", "order")),
-            RankSpec("Family", "FamilyRank", "fBP", "family", ("f", "family")),
-            RankSpec("Genus", "GenusRank", "gBP", "genus", ("g", "genus")),
-            RankSpec("Species", "SpeciesRank", "sBP", "species", ("s", "species")),
-        ]
-
-    raise SystemExit(
-        f"Unsupported marker {marker!r} for SINTAX conversion. "
-        "Add it to python_scripts/sintax_to_rdp_out.py marker_rank_specs()."
-    )
+    return [
+        RankSpec(
+            name_col=rank_name,
+            rank_col=f"{rank_name}Rank",
+            bp_col=_BP_MAP[rank_name],
+            rank_label=rank_name.lower(),
+            accepted_codes=_CODE_MAP.get(rank_name, (rank_name.lower(),)),
+        )
+        for rank_name, _code in specs
+    ]
 
 
 _TOKEN_RE = re.compile(

@@ -1,44 +1,26 @@
-# Teresita M. Porter, August 18, 2022
-# first arg is ITSx_out.ITS1/2.fasta.2 or longest.orfs.fasta or orfs.fasta.nt.filtered filename
-# second arg is for rdp.out.tmp filename
-# third arg is config["marker"] to pick right set of headers
-
 import sys
 
 import pandas as pd
 from Bio import SeqIO
+from marker_defs import get_rdp_csv_header, MARKER_TO_CONDITION
 
-# read in longest.orfs.fasta
 filename = sys.argv[1]
 headers = []
 for record in SeqIO.parse(open(filename), 'fasta'):
-	headers.append(record.id)
+    headers.append(record.id)
 
-
-# read in rdp.out.tmp
 filename2 = sys.argv[2]
 df = pd.read_csv(filename2, sep='\t', header=None)
 
-# read in marker
 marker = sys.argv[3]
 
-orf3_tax4_abund12 = ['COI', 'rbcL_landPlant', 'rbcL_eukaryota']
-orf3_tax4_abund11 = ['rbcL_diatom']
+if marker not in MARKER_TO_CONDITION:
+    print(f"Warning: Unknown marker '{marker}', outputting without column headers", file=sys.stderr)
+    print(df.to_csv(index=False, header=False))
+    sys.exit(0)
 
-# filter rdp.out.tmp by ESVs in longest.orfs.fasta headers
+prefix = ['GlobalESV', 'Strand']
+taxonomy_cols = [c for c in get_rdp_csv_header(marker).split(',') if c]
 df_filtered = df[df[0].isin(headers)]
-
-if marker in orf3_tax4_abund12:
-
-	df_filtered.columns = ['GlobalESV','Strand','Root','RootRank','rBP','SuperKingdom','SuperKingdomRank','skBP','Kingdom','KingdomRank','kBP','Phylum','PhylumRank','pBP','Class','ClassRank','cBP','Order','OrderRank','oBP','Family','FamilyRank','fBP','Genus','GenusRank','gBP','Species','SpeciesRank','sBP']
-	print(df_filtered.to_csv(index=False, header=True))
-
-elif marker in orf3_tax4_abund11:
-
-	df_filtered.columns = ['GlobalESV','Strand','Root','RootRank','rBP','Domain','DomainRank','dBP','Kingdom','KingdomRank','kBP','SubKingdom','SubKingdomRank','skBP','Phylum','PhylumRank','pBP','Class','ClassRank','cBP','Order','OrderRank','oBP','Family','FamilyRank','fBP','Genus','GenusRank','gBP','Species','SpeciesRank','sBP']
-	print(df_filtered.to_csv(index=False, header=True))
-
-elif marker == 'ITS_fungi':
-
-	df_filtered.columns = ['GlobalESV','Strand','Root','RootRank','rBP','Kingdom','KingdomRank','kBP','Phylum','PhylumRank','pBP','Class','ClassRank','cBP','Order','OrderRank','oBP','Family','FamilyRank','fBP','Genus','GenusRank','gBP','Species','SpeciesRank','sBP']
-	print(df_filtered.to_csv(index=False, header=True))
+df_filtered.columns = prefix + taxonomy_cols
+print(df_filtered.to_csv(index=False, header=True))

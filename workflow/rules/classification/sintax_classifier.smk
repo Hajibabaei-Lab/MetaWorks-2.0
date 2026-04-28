@@ -37,6 +37,7 @@ rule taxonomic_assignment:
         marker = lambda wc: CLASSIFICATION_CONFIG.get("marker", "COI"),
     shell:
         r"""
+        set -euo pipefail
         vsearch \
             --sintax {input} \
             --db {params.db} \

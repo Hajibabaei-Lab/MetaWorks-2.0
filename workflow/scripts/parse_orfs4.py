@@ -172,7 +172,6 @@ while i < len(aa_lines):
 # --- Keep records that match between nt and aa ---
 # For each otu and each orf in nt, if a matching otu/orf exists in aa, record it.
 match = {}  # {otu: {orf: length}}
-lengths = []  # list of nt lengths for matched records (not used further)
 
 for otu in nt_length:
     for orf in nt_length[otu]:
@@ -180,7 +179,6 @@ for otu in nt_length:
             if otu not in match:
                 match[otu] = {}
             match[otu][orf] = nt_length[otu][orf]
-            lengths.append(nt_length[otu][orf])
 
 # --- For each otu in the match set, choose the longest ORF and output its nt and aa sequences ---
 with open(outfile1, "w") as out_nt, open(outfile2, "w") as out_aa:
