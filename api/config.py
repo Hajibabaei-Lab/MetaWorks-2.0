@@ -44,17 +44,9 @@ class Settings(BaseSettings):
         default=DEFAULT_REPO_ROOT / "runtime" / "state" / "runs.json",
         description="Tracks run metadata, PIDs/return codes, and paths.",
     )
-    default_configs: Dict[str, Path] = Field(
-        default={
-            "esv": Path("config/config_ESV.yaml"),
-            "otu": Path("config/config_OTU.yaml"),
-        },
-        description="Default workflow configs keyed by workflow name.",
-    )
     snakefiles: Dict[str, Path] = Field(
         default={
-            "esv": Path("Snakefile_ESV"),
-            "otu": Path("Snakefile_OTU"),
+            "esv": Path("workflow/Snakefile"),
         },
         description="Workflow entrypoints keyed by workflow name.",
     )

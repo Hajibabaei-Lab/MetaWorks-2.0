@@ -13,6 +13,11 @@ if TYPE_CHECKING:
     from ..config import Settings
 
 
+def _sanitize_filename(name: str) -> str:
+    """Extract just the filename component to prevent path traversal."""
+    return Path(name).name
+
+
 def _build_asset_router(settings: "Settings") -> APIRouter:
     """Build the asset router."""
 
@@ -20,11 +25,12 @@ def _build_asset_router(settings: "Settings") -> APIRouter:
 
     def _save_upload(target_root: Path, file: UploadFile) -> UploadResponse:
         """Save an uploaded file to the target directory."""
+        safe_name = _sanitize_filename(file.filename or "unnamed")
         target_root.mkdir(parents=True, exist_ok=True)
-        target_path = target_root / file.filename
+        target_path = target_root / safe_name
         content = file.file.read()
         target_path.write_bytes(content)
-        return UploadResponse(name=file.filename, path=str(target_path))
+        return UploadResponse(name=safe_name, path=str(target_path))
 
     @router.post("/classifiers", response_model=UploadResponse)
     def upload_classifier(file: UploadFile = File(...)) -> UploadResponse:
@@ -70,19 +76,21 @@ def _build_asset_router(settings: "Settings") -> APIRouter:
         items = [p.name for p in settings.adapter_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
 
-    @router.post("/delete/classifiers/{name}", response_model=ListAssetsResponse)
+    @router.delete("/classifiers/{name}", response_model=ListAssetsResponse)
     def delete_classifier(name: str) -> ListAssetsResponse:
         """Delete a classifier file."""
-        target = settings.classifier_root / name
+        safe_name = _sanitize_filename(name)
+        target = settings.classifier_root / safe_name
         if target.exists():
             target.unlink()
         items = [p.name for p in settings.classifier_root.glob("*") if p.is_file()]
         return ListAssetsResponse(items=items)
 
-    @router.post("/delete/adapters/{name}", response_model=ListAssetsResponse)
+    @router.delete("/adapters/{name}", response_model=ListAssetsResponse)
     def delete_adapter(name: str) -> ListAssetsResponse:
         """Delete an adapter file."""
-        target = settings.adapter_root / name
+        safe_name = _sanitize_filename(name)
+        target = settings.adapter_root / safe_name
         if target.exists():
             target.unlink()
         items = [p.name for p in settings.adapter_root.glob("*") if p.is_file()]

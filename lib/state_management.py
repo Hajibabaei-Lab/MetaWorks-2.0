@@ -1,5 +1,6 @@
 """State management for pipeline runs."""
 
+import fcntl
 import json
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -74,10 +75,14 @@ class RunStateStore:
         self._data = self._read()
 
     def _read(self) -> Dict[str, Any]:
-        """Read state from disk."""
+        """Read state from disk with file locking."""
         try:
-            with self.state_file.open() as fh:
-                return cast(Dict[str, Any], json.load(fh))
+            with self.state_file.open("r") as fh:
+                fcntl.flock(fh, fcntl.LOCK_SH)
+                try:
+                    return cast(Dict[str, Any], json.load(fh))
+                finally:
+                    fcntl.flock(fh, fcntl.LOCK_UN)
         except json.JSONDecodeError as exc:
             raise StateManagementError(
                 f"Invalid JSON in state file: {self.state_file}",
@@ -88,10 +93,14 @@ class RunStateStore:
             return {}
 
     def _write(self, data: Dict[str, Any]) -> None:
-        """Write state to disk."""
+        """Write state to disk with exclusive file locking."""
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         with self.state_file.open("w") as fh:
-            json.dump(data, fh, indent=2, default=str)
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                json.dump(data, fh, indent=2, default=str)
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
 
     def create_run(self, run_id: str, metadata: RunMetadata) -> None:
         """

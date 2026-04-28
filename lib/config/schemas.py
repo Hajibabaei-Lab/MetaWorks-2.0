@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ValidationError(Exception):
@@ -138,13 +138,15 @@ class PipelineConfig(BaseModel):
     output_dir: str = Field(..., description="Output directory name")
     parallel_jobs: int = Field(default=4, ge=1, le=32)
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def validate_pipeline_name(cls, v):
         if v not in ["esv", "otu"]:
             raise ValueError('Pipeline name must be "esv" or "otu"')
         return v
 
-    @validator("output_dir")
+    @field_validator("output_dir")
+    @classmethod
     def validate_output_dir(cls, v):
         if not v.replace("_", "").replace("-", "").isalnum():
             raise ValueError(
@@ -158,7 +160,8 @@ class InputConfig(BaseModel):
     samples_csv: Optional[str] = Field(default=None, description="CSV file with samples")
     fastq_dir: str = Field(..., description="Directory with FASTQ files")
 
-    @validator("sample_source")
+    @field_validator("sample_source")
+    @classmethod
     def validate_sample_source(cls, v):
         if v not in ["folder", "csv"]:
             raise ValueError('sample_source must be "folder" or "csv"')
@@ -177,7 +180,8 @@ class ModuleSelection(BaseModel):
         description="Classification backend selector (rdp or sintax).",
     )
 
-    @validator("classification_engine")
+    @field_validator("classification_engine")
+    @classmethod
     def validate_classification_engine(cls, v):
         allowed = ["rdp", "sintax"]
         if v not in allowed:
@@ -223,14 +227,16 @@ class ClassificationConfig(BaseModel):
     classifier_path: Optional[str] = Field(default=None)
     builtin_classifier: Optional[str] = Field(default=None)
 
-    @validator("engine")
+    @field_validator("engine")
+    @classmethod
     def validate_engine(cls, v):
         allowed = ["rdp", "sintax"]
         if v not in allowed:
             raise ValueError(f"engine must be one of {allowed}")
         return v
 
-    @validator("builtin_classifier")
+    @field_validator("builtin_classifier")
+    @classmethod
     def validate_builtin_classifier(cls, v):
         if v is None:
             return v
@@ -254,13 +260,15 @@ class PseudogeneConfig(BaseModel):
     ignore_nested_orfs: bool = Field(default=True)
     strand: str = Field(default="plus")
 
-    @validator("method")
+    @field_validator("method")
+    @classmethod
     def validate_method(cls, v):
         if v not in ["hmm", "orf"]:
             raise ValueError('method must be "hmm" or "orf"')
         return v
 
-    @validator("strand")
+    @field_validator("strand")
+    @classmethod
     def validate_strand(cls, v):
         if v not in ["both", "plus", "minus"]:
             raise ValueError('strand must be "both", "plus", or "minus"')

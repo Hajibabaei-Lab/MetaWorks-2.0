@@ -13,7 +13,7 @@ classification:
   rdp:
     use_custom_classifier: false
     classifier_path: null
-    builtin_classifier: "fungallsu"
+    builtin_classifier: "rdp_train_16s"
 
 # Pseudogene filtering typically not used for 16S
 # Users can enable it manually if needed

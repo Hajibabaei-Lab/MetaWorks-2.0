@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
-from lib.exceptions import RuntimeError as MWRuntimeError
+from lib.exceptions import MetaWorksRuntimeError as MWRuntimeError
 
 from .base import RuntimeHandler
 

@@ -149,11 +149,6 @@ class LogResponse(BaseModel):
     tail: List[str]
 
 
-class RenderConfigRequest(BaseModel):
-    workflow: WorkflowType
-    overrides: Dict[str, Any] = Field(default_factory=dict)
-
-
 class RenderConfigResponse(BaseModel):
     workflow: WorkflowType
     merged: str
@@ -190,3 +185,28 @@ class PathsResponse(BaseModel):
     retention_policy: str
     default_runtime: str
     container_image: str
+
+
+class FieldSchema(BaseModel):
+    type: str
+    default: Optional[Any] = None
+    description: Optional[str] = None
+    constraints: Optional[Dict[str, Any]] = None
+    options: Optional[List[Any]] = None
+    visible_when: Optional[str] = None
+    label: Optional[str] = None
+    fields: Optional[Dict[str, "FieldSchema"]] = None
+
+
+class SectionSchema(BaseModel):
+    label: str
+    enabled_by: Optional[str] = None
+    collapsed: Optional[bool] = None
+    fields: Dict[str, FieldSchema]
+
+
+class ConfigSchemaResponse(BaseModel):
+    profile: str
+    marker: str
+    workflow: str
+    sections: Dict[str, SectionSchema]

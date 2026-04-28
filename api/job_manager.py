@@ -34,17 +34,6 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 
-def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge overrides into base."""
-    merged = dict(base)
-    for key, value in overrides.items():
-        if isinstance(value, dict) and isinstance(base.get(key), dict):
-            merged[key] = _deep_merge(base[key], value)
-        else:
-            merged[key] = value
-    return merged
-
-
 class SnakemakeRunner:
     """Runtime-aware Snakemake command builder and launcher."""
 
@@ -266,7 +255,7 @@ class JobManager:
         Stage repo-relative resources into the run directory.
 
         The Snakemake runner uses `--directory <run_dir>`, so many workflow paths
-        like `python_scripts/...`, `config/...`, or `tests/...` must exist
+        like `workflow/scripts/...`, `config/...`, or `tests/...` must exist
         relative to `run_dir`.
         """
 
@@ -287,8 +276,8 @@ class JobManager:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
 
-        # Scripts referenced as `python3 python_scripts/<script>.py` in many rules.
-        _copytree_if_missing(repo_root / "python_scripts", run_dir / "python_scripts")
+        # Scripts referenced as `python3 workflow/scripts/<script>.py` in rules.
+        _copytree_if_missing(repo_root / "workflow" / "scripts", run_dir / "workflow" / "scripts")
 
         # Config resources referenced as `config/...` (e.g. HMM profiles).
         _copytree_if_missing(repo_root / "config", run_dir / "config")

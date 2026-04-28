@@ -13,7 +13,7 @@ class ConfigError(Exception):
     pass
 
 
-class FileNotFoundError(ConfigError):
+class ConfigFileNotFoundError(ConfigError):
     """Raised when a configuration file is not found."""
 
     pass
@@ -42,7 +42,7 @@ def load_yaml(file_path: str) -> Dict[str, Any]:
     path = Path(file_path)
 
     if not path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {file_path}")
+        raise ConfigFileNotFoundError(f"Configuration file not found: {file_path}")
 
     try:
         with open(path, "r") as f:

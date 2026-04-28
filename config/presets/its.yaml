@@ -18,4 +18,5 @@ classification:
 # Pseudogene filtering not typically used for ITS
 # ITS is non-coding, so pseudogene filtering is not applicable
 pseudogene_filtering:
-  method: null
+  enabled: false
+  method: "orf"

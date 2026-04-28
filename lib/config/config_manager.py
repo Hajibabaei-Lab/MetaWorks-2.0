@@ -51,7 +51,7 @@ class ConfigManager:
         # Default configuration paths
         self.system_config_path = self.repo_root / "config" / "system_config.yaml"
         self.defaults_config_path = self.repo_root / "config" / "defaults.yaml"
-        self.profiles_dir = self.repo_root / "config" / "profiles"
+        self.profiles_dir = self.repo_root / "config" / "presets"
         self.modules_dir = self.repo_root / "modules"
 
     def load_system_config(self, system_config_path: Optional[str] = None) -> Dict[str, Any]:

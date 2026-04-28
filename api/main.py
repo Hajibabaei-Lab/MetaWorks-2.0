@@ -14,7 +14,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .config import Settings, settings
 from .job_manager import JobManager
-from .routes import assets, configs, runs
+from .routes import assets, configs, runs, schema
 
 API_PREFIX = "/api"
 
@@ -87,14 +87,11 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
 
     health_router = _build_health_router()
     app.include_router(health_router, prefix=API_PREFIX)
-    app.include_router(health_router, include_in_schema=False)
 
     runs.register_run_routes(app, manager, prefix=API_PREFIX)
-    runs.register_run_routes(app, manager, include_in_schema=False)
     configs.register_config_routes(app, manager, active_settings, prefix=API_PREFIX)
-    configs.register_config_routes(app, manager, active_settings, include_in_schema=False)
     assets.register_asset_routes(app, active_settings, prefix=API_PREFIX)
-    assets.register_asset_routes(app, active_settings, include_in_schema=False)
+    schema.register_schema_routes(app, manager, active_settings, prefix=API_PREFIX)
 
     @app.get("/docs", include_in_schema=False)
     def docs_redirect() -> RedirectResponse:
