@@ -6,11 +6,14 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yaml
 
+from lib.exceptions import ConfigurationError
 
-class ConfigError(Exception):
+
+class ConfigError(ConfigurationError):
     """Base exception for configuration errors."""
 
-    pass
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, **kwargs)
 
 
 class ConfigFileNotFoundError(ConfigError):

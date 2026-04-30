@@ -4,22 +4,19 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from lib.exceptions import ValidationError as _BaseValidationError
 
-class ValidationError(Exception):
+
+class ValidationError(_BaseValidationError):
     """Raised when configuration validation fails."""
 
-    def __init__(self, errors: List[str]):
-        self.errors = errors
-        super().__init__(
+    def __init__(self, errors: List[str], **kwargs):
+        message = (
             f"Validation failed with {len(errors)} error(s):\n"
             + "\n".join(f"  - {e}" for e in errors)
         )
-
-
-class ConfigError(Exception):
-    """Base exception for configuration errors."""
-
-    pass
+        super().__init__(message, **kwargs)
+        self.errors = errors
 
 
 # ============================================================================
