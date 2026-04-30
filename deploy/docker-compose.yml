@@ -17,7 +17,7 @@ services:
 
   frontend:
     build:
-      context: ${METAWORKS_UI_CONTEXT:-../../metaworks-ui}
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE: /api

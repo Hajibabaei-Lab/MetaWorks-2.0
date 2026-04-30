@@ -1,0 +1,12 @@
+:8080 {
+    encode zstd gzip
+
+    route {
+        @api path /api/*
+        reverse_proxy @api backend:8000
+
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

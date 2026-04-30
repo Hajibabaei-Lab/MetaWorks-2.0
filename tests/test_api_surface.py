@@ -47,13 +47,12 @@ def test_backend_root_404s_when_legacy_ui_is_disabled(monkeypatch):
     assert client.get("/").status_code == 404
 
 
-def test_legacy_ui_mount_still_available(monkeypatch):
+def test_legacy_ui_flag_is_noop_without_ui_directory(monkeypatch):
     app = load_app(monkeypatch, METAWORKS_SERVE_LEGACY_UI="1")
     client = TestClient(app)
 
     response = client.get("/")
-    assert response.status_code == 200
-    assert "MetaWorks" in response.text
+    assert response.status_code == 404
 
 
 def test_settings_paths_exposes_frontend_defaults(monkeypatch):

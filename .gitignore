@@ -47,3 +47,10 @@ dist/
 runtime/
 *.egg-info/
 .eggs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.nuxt/
+frontend/.tsbuildinfo
+frontend/.env.local
