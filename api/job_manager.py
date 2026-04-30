@@ -39,9 +39,18 @@ class SnakemakeRunner:
 
     def __init__(self):
         self.repo_root = settings.repo_root
-        self.conda_handler = CondaRuntime(repo_root=settings.repo_root)
-        self.docker_handler = DockerRuntime(repo_root=settings.repo_root)
-        self.singularity_handler = SingularityRuntime(repo_root=settings.repo_root)
+
+    def _handler_for(self, runtime: RuntimeType):
+        if runtime == RuntimeType.conda:
+            return CondaRuntime(repo_root=settings.repo_root)
+        if runtime == RuntimeType.docker:
+            return DockerRuntime(repo_root=settings.repo_root)
+        if runtime == RuntimeType.apptainer:
+            return SingularityRuntime(repo_root=settings.repo_root)
+        raise ConfigurationError(
+            f"Unknown runtime type: {runtime}",
+            config_key="runtime",
+        )
 
     def _snakefile_for(self, workflow: WorkflowType) -> Path:
         snakefile = settings.snakefiles.get(workflow.value)
@@ -70,37 +79,35 @@ class SnakemakeRunner:
         """Build Snakemake command using appropriate runtime handler."""
         snakefile = self._snakefile_for(submission.workflow)
         cores = submission.cores or settings.default_cores
+        handler = self._handler_for(submission.runtime)
 
-        # Select appropriate runtime handler
         if submission.runtime == RuntimeType.conda:
-            return self.conda_handler.build_command(
+            return handler.build_command(
                 snakefile=snakefile, config_path=config_path, workdir=run_dir, cores=cores
             )
 
-        # For container runtimes, get image and additional bind paths
         container_image = submission.container_image or settings.container_image
         additional_binds = self._resolve_binds(run_dir, submission)
 
-        if submission.runtime == RuntimeType.docker:
-            return self.docker_handler.build_command(
+        if submission.runtime == RuntimeType.apptainer:
+            cache_dir = submission.cache_dir or settings.singularity_cache
+            return handler.build_command(
                 snakefile=snakefile,
                 config_path=config_path,
                 workdir=run_dir,
                 cores=cores,
                 image=container_image,
-                additional_binds=additional_binds,
+                bind_paths=additional_binds,
+                cache_dir=Path(cache_dir),
             )
 
-        # Singularity runtime
-        cache_dir = submission.cache_dir or settings.singularity_cache
-        return self.singularity_handler.build_command(
+        return handler.build_command(
             snakefile=snakefile,
             config_path=config_path,
             workdir=run_dir,
             cores=cores,
             image=container_image,
-            additional_binds=additional_binds,
-            cache_dir=Path(cache_dir),
+            bind_paths=additional_binds,
         )
 
     def launch(self, command: List[str], log_path: Path) -> subprocess.Popen:
