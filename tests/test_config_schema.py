@@ -344,8 +344,9 @@ class TestSchemaInputSection:
         fields = input_section["fields"]
 
         assert "sample_source" in fields
-        assert fields["sample_source"]["type"] == "string"
+        assert fields["sample_source"]["type"] == "select"
         assert fields["sample_source"]["default"] == "folder"
+        assert fields["sample_source"]["options"] == ["folder", "csv"]
 
         assert "fastq_dir" in fields
         assert fields["fastq_dir"]["type"] == "file_ref"

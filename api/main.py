@@ -93,6 +93,11 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     assets.register_asset_routes(app, active_settings, prefix=API_PREFIX)
     schema.register_schema_routes(app, manager, active_settings, prefix=API_PREFIX)
 
+    @app.get("/health", include_in_schema=False)
+    def health_alias() -> PlainTextResponse:
+        """Legacy health alias."""
+        return PlainTextResponse("ok")
+
     @app.get("/docs", include_in_schema=False)
     def docs_redirect() -> RedirectResponse:
         """Legacy docs alias."""
