@@ -3,10 +3,7 @@ from typing import Dict, List
 
 from pydantic import Field
 
-try:  # Pydantic v2+
-    from pydantic_settings import BaseSettings
-except Exception:  # pragma: no cover
-    from pydantic import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # Resolve the repository root relative to this file so defaults work on any host path.
@@ -84,8 +81,7 @@ class Settings(BaseSettings):
         description="Comma-separated origins allowed to access the API directly during development.",
     )
 
-    class Config:
-        env_prefix = "METAWORKS_"
+    model_config = SettingsConfigDict(env_prefix="METAWORKS_")
 
 
 settings = Settings()

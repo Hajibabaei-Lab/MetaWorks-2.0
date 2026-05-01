@@ -101,12 +101,11 @@ class RunSubmissionRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    @classmethod
-    def validate_container_image(cls, data):
+    def validate_container_image(self):
         """Ensure container_image is provided for container runtimes."""
-        if data.runtime in (RuntimeType.docker, RuntimeType.apptainer) and not data.container_image:
-            raise ValueError(f"container_image is required when using {data.runtime} runtime")
-        return data
+        if self.runtime in (RuntimeType.docker, RuntimeType.apptainer) and not self.container_image:
+            raise ValueError(f"container_image is required when using {self.runtime} runtime")
+        return self
 
 
 class RunStatus(BaseModel):
