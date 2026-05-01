@@ -24,6 +24,7 @@ rule pair_reads:
         config["pipeline"]["output_dir"] + "/benchmarks/pairing/{sample}.txt"
     shell:
         """
+        set -euo pipefail
         SeqPrep \
             -f {input.f} \
             -r {input.r} \
@@ -34,7 +35,7 @@ rule pair_reads:
             -m {params.m} \
             -n {params.n} \
             -s {output.s} \
-            2>&1 | tee {log}
+            2> >(tee "{log}" >&2)
         """
 
 rule trim_linked_adapters:
@@ -57,6 +58,7 @@ rule trim_linked_adapters:
         config["pipeline"]["output_dir"] + "/benchmarks/trimming/{sample}.txt"
     shell:
         """
+        set -euo pipefail
         cutadapt \
             -a file:{input.adapters} \
             -m {params.m} \
@@ -70,7 +72,7 @@ rule trim_linked_adapters:
             --fasta \
             --output {output} \
             {input.paired} \
-            2>&1 | tee {log}
+            2> >(tee "{log}" >&2)
         """
 
 rule gzip_trimmed_fasta:

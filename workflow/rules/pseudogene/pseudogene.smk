@@ -35,7 +35,7 @@ if pseudogene_enabled:
                 taxon1 = PSEUDOGENE_CONFIG.get("taxon1", "")
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | awk '{{print $1}}' > \"{output}\" || true"
+                "set -euo pipefail; set +o pipefail; grep \"{params.taxon1}\" {input} | awk '{{print $1}}' > \"{output}\" || true"
     else:
         rule subset_taxonomy_by_taxon1_and_taxon2:
             input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
@@ -45,7 +45,7 @@ if pseudogene_enabled:
                 taxon2 = PSEUDOGENE_CONFIG.get("taxon2", "")
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | grep {params.taxon2} | awk '{{print $1}}' > \"{output}\" || true"
+                "set -euo pipefail; set +o pipefail; grep \"{params.taxon1}\" {input} | grep \"{params.taxon2}\" | awk '{{print $1}}' > \"{output}\" || true"
 
     rule subset_ESV_sequences_by_taxon:
         input:
