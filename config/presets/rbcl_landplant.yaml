@@ -1,0 +1,27 @@
+# rbcL Land Plant Profile
+# For land plant community analysis using rbcL gene
+# Requires a custom-trained RDP classifier
+# Pseudogene filtering enabled (protein-coding gene)
+
+profile:
+  name: "rbcl_landplant"
+  description: "rbcL metabarcoding for land plants"
+  marker: "rbcL_landPlant"
+
+# Enable pseudogene filtering for this protein-coding marker
+modules:
+  pseudogene_filtering: true
+
+# Classification settings
+classification:
+  marker: "rbcL_landPlant"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/rbcL_landPlant.properties"
+
+# Pseudogene filtering using longest-ORF method
+pseudogene_filtering:
+  method: "orf"
+  genetic_code: 1
+  # TODO: Set taxon1 for land plants, e.g. "-e Streptophyta" or "-e Embryophyta"

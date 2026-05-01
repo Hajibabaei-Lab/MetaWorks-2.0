@@ -1,0 +1,21 @@
+# ITS Plants Profile
+# For plant community analysis using Internal Transcribed Spacer
+# Requires a custom-trained RDP classifier
+# Note: ITS is non-coding, so pseudogene filtering is not applicable
+
+profile:
+  name: "its_plants"
+  description: "ITS metabarcoding for plants"
+  marker: "ITS_plants"
+
+# Classification settings
+classification:
+  marker: "ITS_plants"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/ITS_plants.properties"
+
+# Pseudogene filtering not applicable for ITS (non-coding spacer)
+modules:
+  pseudogene_filtering: false

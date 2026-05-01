@@ -1,0 +1,20 @@
+# 18S Diatom Profile
+# For diatom community analysis using 18S rRNA
+# Requires a custom-trained RDP classifier
+
+profile:
+  name: "18s_diatom"
+  description: "18S rRNA metabarcoding for diatoms"
+  marker: "18S_diatom"
+
+# Classification settings
+classification:
+  marker: "18S_diatom"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/18S_diatom.properties"
+
+# Pseudogene filtering not applicable for rRNA genes
+modules:
+  pseudogene_filtering: false

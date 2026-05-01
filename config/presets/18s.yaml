@@ -1,0 +1,20 @@
+# 18S Eukaryota Profile
+# For broad eukaryotic community analysis
+# Requires a custom-trained RDP classifier
+
+profile:
+  name: "18s"
+  description: "18S rRNA metabarcoding for eukaryotes"
+  marker: "18S_eukaryota"
+
+# Classification settings
+classification:
+  marker: "18S_eukaryota"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/18S_eukaryota.properties"
+
+# Pseudogene filtering not applicable for rRNA genes
+modules:
+  pseudogene_filtering: false

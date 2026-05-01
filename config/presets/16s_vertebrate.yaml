@@ -1,0 +1,20 @@
+# 16S Vertebrate Profile
+# For metabarcoding of vertebrate mitochondrial 16S region
+# Requires a custom-trained RDP classifier
+
+profile:
+  name: "16s_vertebrate"
+  description: "16S rRNA metabarcoding for vertebrates (mitochondrial)"
+  marker: "16S_vertebrate"
+
+# Classification settings
+classification:
+  marker: "16S_vertebrate"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/16S_vertebrate.properties"
+
+# Pseudogene filtering not applicable for rRNA genes
+modules:
+  pseudogene_filtering: false
