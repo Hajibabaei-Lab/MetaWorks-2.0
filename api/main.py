@@ -52,7 +52,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="MetaWorks Control Node API",
-        version="0.2.0",
+        version="2.0.0",
         docs_url=f"{API_PREFIX}/docs",
         openapi_url=f"{API_PREFIX}/openapi.json",
         redoc_url=None,
