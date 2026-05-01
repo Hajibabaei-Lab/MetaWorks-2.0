@@ -153,7 +153,7 @@ class PipelineConfig(BaseModel):
 
 
 class InputConfig(BaseModel):
-    sample_source: str = Field(default="folder", description="Sample input method")
+    sample_source: str = Field(default="folder", pattern="^(folder|csv)$", description="Sample input method")
     samples_csv: Optional[str] = Field(default=None, description="CSV file with samples")
     fastq_dir: str = Field(..., description="Directory with FASTQ files")
 
