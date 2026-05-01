@@ -24,7 +24,6 @@ const form = reactive<SubmitRunFormState>({
   samples_csv: "",
   notes: "",
   cores: "",
-  mem_gb: "",
   dry_run: false,
   keep_outputs: true,
   config_overrides_text: "{\n  \"pipeline\": {\n    \"name\": \"esv\"\n  }\n}",
@@ -232,10 +231,6 @@ const runtimeHelp = computed(() => {
           <div class="split-grid">
             <el-form-item label="Cores override">
               <el-input v-model="form.cores" placeholder="Leave blank for backend default" />
-            </el-form-item>
-
-            <el-form-item label="Memory override (GB)">
-              <el-input v-model="form.mem_gb" placeholder="Leave blank for backend default" />
             </el-form-item>
           </div>
 

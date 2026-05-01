@@ -15,7 +15,6 @@ describe("buildRunSubmission", () => {
       samples_csv: "",
       notes: "hello",
       cores: "8",
-      mem_gb: "32",
       dry_run: false,
       keep_outputs: true,
       config_overrides_text: "{\"pipeline\":{\"name\":\"esv\"}}",
@@ -23,7 +22,6 @@ describe("buildRunSubmission", () => {
 
     expect(payload.bind_paths).toEqual(["/data:/data", "/work:/work"]);
     expect(payload.cores).toBe(8);
-    expect(payload.mem_gb).toBe(32);
     expect(payload.config_overrides).toEqual({ pipeline: { name: "esv" } });
   });
 

@@ -82,16 +82,10 @@ class RunSubmissionRequest(BaseModel):
         default=None, max_length=2000, description="Optional free-form notes for the run."
     )
     cores: Optional[int] = Field(
-        default=None, ge=1, le=256, description="Override default cores for scheduler job (1-256)."
-    )
-    mem_gb: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=1024,
-        description="Override default memory (GB) for scheduler job (1-1024 GB).",
+        default=None, ge=1, le=256, description="Override default cores (1-256)."
     )
     dry_run: bool = Field(
-        default=False, description="If true, do not submit to scheduler—only stage config."
+        default=False, description="If true, only stage config without executing."
     )
     keep_outputs: bool = Field(
         default=True,

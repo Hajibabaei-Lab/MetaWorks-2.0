@@ -50,14 +50,6 @@ class Settings(BaseSettings):
         },
         description="Workflow entrypoints keyed by workflow name.",
     )
-    scheduler: str = Field(
-        default="slurm",
-        description="Scheduler flavor (slurm|lsf|pbs).",
-    )
-    submit_enabled: bool = Field(
-        default=False,
-        description="If False, scheduler submit is dry-run and only records the command.",
-    )
     default_runtime: str = Field(
         default="docker", description="Default runtime if not provided (conda|docker|apptainer)."
     )
@@ -82,7 +74,6 @@ class Settings(BaseSettings):
         description="Default cache/prefix for Apptainer/Singularity pulls.",
     )
     default_cores: int = Field(default=32, description="Cores requested per job.")
-    default_mem_gb: int = Field(default=120, description="Memory requested per job.")
     log_tail_lines: int = Field(default=200, description="Default lines to return for log tail.")
     serve_legacy_ui: bool = Field(
         default=True,

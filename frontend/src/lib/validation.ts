@@ -125,7 +125,6 @@ export type SubmitRunFormState = {
   samples_csv: string;
   notes: string;
   cores: string;
-  mem_gb: string;
   dry_run: boolean;
   keep_outputs: boolean;
   config_overrides_text: string;
@@ -145,7 +144,6 @@ export const submitRunFormSchema = z
     samples_csv: z.string(),
     notes: z.string(),
     cores: z.string(),
-    mem_gb: z.string(),
     dry_run: z.boolean(),
     keep_outputs: z.boolean(),
     config_overrides_text: z.string(),
@@ -216,7 +214,6 @@ export function buildRunSubmission(form: SubmitRunFormState): RunSubmissionReque
   const parsed = submitRunFormSchema.parse(form);
   const overrides = parseJsonObject(parsed.config_overrides_text, "Config overrides");
   const cores = parseOptionalInt(parsed.cores, "Cores");
-  const memGb = parseOptionalInt(parsed.mem_gb, "Memory");
 
   return {
     profile: parsed.profile,
@@ -233,7 +230,6 @@ export function buildRunSubmission(form: SubmitRunFormState): RunSubmissionReque
     sample_source: parsed.sample_source,
     notes: parsed.notes.trim() || null,
     cores,
-    mem_gb: memGb,
     dry_run: parsed.dry_run,
     keep_outputs: parsed.keep_outputs,
   };
