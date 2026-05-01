@@ -1,0 +1,16 @@
+# 28S Fungi Profile
+# For fungal community analysis using the large ribosomal subunit
+# Uses built-in RDP classifier with fungal LSU training set
+
+profile:
+  name: "28s"
+  description: "28S rRNA metabarcoding for fungi (LSU)"
+  marker: "28S_fungi"
+
+# Classification settings for 28S
+classification:
+  marker: "28S_fungi"
+  rdp:
+    use_custom_classifier: false
+    classifier_path: null
+    builtin_classifier: "fungallsu"
