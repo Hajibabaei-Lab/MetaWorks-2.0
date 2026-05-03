@@ -4,7 +4,7 @@
 
 rule taxonomic_assignment:
     input:
-        config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+        get_sequences_input(config)
     output:
         config["pipeline"]["output_dir"] + "/rdp.out.tmp"
     threads: 4

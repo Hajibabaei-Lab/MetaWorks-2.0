@@ -50,7 +50,7 @@ if pseudogene_enabled:
     rule subset_ESV_sequences_by_taxon:
         input:
             tax = config["pipeline"]["output_dir"] + "/taxon.zotus",
-            fas = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+            fas = get_sequences_input(config)
         output: config["pipeline"]["output_dir"] + "/chimera.denoised.nonchimeras.taxon"
         log: config["pipeline"]["output_dir"] + "/logs/pseudogene/esv_subset.log"
         shell:
@@ -77,7 +77,7 @@ if pseudogene_enabled:
 
         rule filter_ESV_table:
             input:
-                table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
+                table = get_abundance_table(config),
                 orf = config["pipeline"]["output_dir"] + "/longest.orfs.fasta"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_esv_table.log"
@@ -134,7 +134,7 @@ if pseudogene_enabled:
 
         rule filter_ESV_table:
             input:
-                table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
+                table = get_abundance_table(config),
                 orf = config["pipeline"]["output_dir"] + "/orfs.fasta.nt.filtered.hmm"
             output: config["pipeline"]["output_dir"] + "/ESV.table"
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/filter_esv_table.log"
@@ -150,7 +150,7 @@ else:
     rule copy_unfiltered_taxonomy:
         input:
             rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp",
-            fas = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+            fas = get_sequences_input(config)
         output: config["pipeline"]["output_dir"] + "/taxonomy.csv"
         params:
             marker = CLASSIFICATION_CONFIG.get("marker", "COI")
@@ -159,7 +159,7 @@ else:
             "set -euo pipefail; python3 workflow/scripts/filter_rdp_taxonomy.py {input.fas} {input.rdp} {params.marker} > {output}"
 
     rule copy_unfiltered_esv_table:
-        input: config["pipeline"]["output_dir"] + "/ESV.table.tmp"
+        input: get_abundance_table(config)
         output: config["pipeline"]["output_dir"] + "/ESV.table"
         log: config["pipeline"]["output_dir"] + "/logs/pseudogene/copy_esv_table.log"
         shell:

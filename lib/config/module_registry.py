@@ -133,6 +133,50 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
             }
         ],
     },
+    "clustering": {
+        "module": {
+            "name": "clustering",
+            "version": "2.0.0",
+            "description": "OTU clustering at 97% similarity using VSEARCH cluster_smallmem.",
+            "author": "Hajibabaei Lab",
+            "enabled_by_default": False,
+        },
+        "directory": "clustering",
+        "snakefile": "workflow/rules/clustering/clustering.smk",
+        "config_section": "clustering",
+        "compatible_workflows": ["esv"],
+        "activation": "enabled",
+        "stage": "clustering",
+        "terminal_outputs": ["centroids.fasta", "OTU.table"],
+        "validation": [
+            {
+                "parameter": "cluster_id",
+                "type": "float",
+                "min": 0.5,
+                "max": 1.0,
+                "description": "Clustering similarity threshold (OTU radius).",
+            },
+            {
+                "parameter": "threads",
+                "type": "integer",
+                "min": 1,
+                "max": 32,
+                "description": "Number of threads for VSEARCH.",
+            },
+        ],
+        "resources": {
+            "default": {"threads": 4, "memory_mb": 8000, "time_minutes": 120},
+            "high_load": {"threads": 8, "memory_mb": 16000, "time_minutes": 180},
+        },
+        "depends_on": ["denoising"],
+        "checkpoints": [
+            {
+                "name": "clustering_complete",
+                "trigger": "OTU clustering complete",
+                "output": "{output_dir}/checkpoints/clustering_complete.done",
+            }
+        ],
+    },
     "classification": {
         "module": {
             "name": "classification",
@@ -513,7 +557,7 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
     """Resolve durable workflow targets for rule all."""
     output_dir = config["pipeline"]["output_dir"]
     samples_list = list(samples)
-    stage_rank = {"trimming": 0, "denoising": 1, "classification": 2}
+    stage_rank = {"trimming": 0, "denoising": 1, "clustering": 2, "classification": 3}
 
     included = _resolve_included_module_names(config)
     highest_stage: Optional[str] = None

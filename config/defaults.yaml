@@ -22,6 +22,7 @@ input:
 modules:
   trimming: true
   denoising: true
+  clustering: false
   classification: true
   classification_engine: "rdp"
   pseudogene_filtering: false
@@ -45,6 +46,13 @@ trimming:
 denoising:
   pool_samples: true
   min_cluster_size: 8
+  threads: 4
+
+# ============================================================================
+# Clustering Parameters (VSEARCH OTU clustering)
+# ============================================================================
+clustering:
+  cluster_id: 0.97
   threads: 4
 
 # ============================================================================

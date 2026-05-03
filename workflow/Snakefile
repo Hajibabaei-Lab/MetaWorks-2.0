@@ -1,6 +1,7 @@
 # Snakefile
-# MetaWorks v2.0 - ESV Pipeline
+# MetaWorks v2.0 - ESV/OTU Pipeline
 # Configuration: Edit config/user_config.yaml to customize your pipeline
+# Enable modules.clustering: true for OTU mode (97% clustering)
 #
 # Standard Snakemake deployment layout:
 #   workflow/Snakefile       ← you are here

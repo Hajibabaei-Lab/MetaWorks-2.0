@@ -10,7 +10,8 @@ for record in SeqIO.parse(open(filename), 'fasta'):
     headers.append(record.id)
 
 filename2 = sys.argv[2]
-df = pd.read_csv(filename2, sep='\t', header=None)
+max_cols = max(len(line.split('\t')) for line in open(filename2) if line.strip())
+df = pd.read_csv(filename2, sep='\t', header=None, names=range(max_cols))
 
 marker = sys.argv[3]
 
@@ -21,6 +22,12 @@ if marker not in MARKER_TO_CONDITION:
 
 prefix = ['GlobalESV', 'Strand']
 taxonomy_cols = [c for c in get_rdp_csv_header(marker).split(',') if c]
+expected = len(prefix) + len(taxonomy_cols)
+actual = len(df.columns)
+if actual > expected:
+    taxonomy_cols += [f'extra_rank{i}' for i in range(actual - expected)]
+elif actual < expected:
+    taxonomy_cols = taxonomy_cols[: actual - len(prefix)]
 df_filtered = df[df[0].isin(headers)]
 df_filtered.columns = prefix + taxonomy_cols
 print(df_filtered.to_csv(index=False, header=True))

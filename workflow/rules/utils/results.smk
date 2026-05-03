@@ -48,7 +48,7 @@ else:
     rule add_ESV_sequences_to_taxonomy:
         input:
             rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp",
-            esvs = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+            esvs = get_sequences_input(config)
         output:
             temp(config["pipeline"]["output_dir"] + "/taxonomy_seq.tsv")
         log: config["pipeline"]["output_dir"] + "/logs/results/add_seqs_taxonomy.log"
@@ -58,7 +58,7 @@ else:
     if config.get("output", {}).get("report_type", 1) == 1:
         rule generate_results_basic:
             input:
-                table = config["pipeline"]["output_dir"] + "/ESV.table.tmp",
+                table = get_abundance_table(config),
                 rdp = config["pipeline"]["output_dir"] + "/taxonomy_seq.tsv"
             output: config["pipeline"]["output_dir"] + "/results.csv"
             params:

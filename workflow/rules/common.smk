@@ -44,3 +44,24 @@ def get_classification_engine(config):
         if engine is not None:
             return str(engine).strip().lower()
     return "rdp"
+
+
+def clustering_enabled(config):
+    """Check whether OTU clustering is active."""
+    return is_module_enabled(config, "clustering", default=False)
+
+
+def get_sequences_input(config):
+    """Return the FASTA file for classification: centroids.fasta if clustering, else denoised."""
+    out = config["pipeline"]["output_dir"]
+    if clustering_enabled(config):
+        return out + "/centroids.fasta"
+    return out + "/cat.denoised.nonchimeras"
+
+
+def get_abundance_table(config):
+    """Return the abundance table: OTU.table if clustering, else ESV.table.tmp."""
+    out = config["pipeline"]["output_dir"]
+    if clustering_enabled(config):
+        return out + "/OTU.table"
+    return out + "/ESV.table.tmp"

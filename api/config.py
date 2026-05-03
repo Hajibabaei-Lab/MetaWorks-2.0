@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     snakefiles: Dict[str, Path] = Field(
         default={
             "esv": Path("workflow/Snakefile"),
+            "otu": Path("workflow/Snakefile"),
         },
         description="Workflow entrypoints keyed by workflow name.",
     )

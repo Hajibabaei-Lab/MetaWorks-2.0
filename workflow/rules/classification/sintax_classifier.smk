@@ -23,7 +23,7 @@ strand = SINTAX_CONFIG.get("strand", "both")
 
 rule taxonomic_assignment:
     input:
-        config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
+        get_sequences_input(config)
     output:
         raw = temp(config["pipeline"]["output_dir"] + "/sintax.out.tmp"),
         rdp = config["pipeline"]["output_dir"] + "/rdp.out.tmp"

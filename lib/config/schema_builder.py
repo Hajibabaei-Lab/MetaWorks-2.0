@@ -10,6 +10,7 @@ from .loader import merge_configs
 from .module_registry import MODULE_REGISTRY
 from .schemas import (
     ClassificationConfig,
+    ClusteringConfig,
     DenoisingConfig,
     InputConfig,
     ModuleSelection,
@@ -26,6 +27,7 @@ SECTION_MODELS = {
     "modules": ModuleSelection,
     "trimming": TrimmingConfig,
     "denoising": DenoisingConfig,
+    "clustering": ClusteringConfig,
     "classification": ClassificationConfig,
     "pseudogene_filtering": PseudogeneConfig,
     "stats": StatsConfig,
@@ -38,6 +40,7 @@ SECTION_LABELS = {
     "modules": "Module Toggles",
     "trimming": "Trimming Parameters (Cutadapt)",
     "denoising": "Denoising Parameters (VSEARCH)",
+    "clustering": "OTU Clustering Parameters (VSEARCH)",
     "classification": "Classification Parameters",
     "pseudogene_filtering": "Pseudogene Filtering",
     "stats": "Statistics",
@@ -58,6 +61,7 @@ FILE_REF_FIELDS = frozenset(
 SECTION_ENABLED_BY = {
     "trimming": "modules.trimming",
     "denoising": "modules.denoising",
+    "clustering": "modules.clustering",
     "classification": "modules.classification",
     "pseudogene_filtering": "modules.pseudogene_filtering",
     "stats": "modules.stats",

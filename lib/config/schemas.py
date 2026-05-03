@@ -169,6 +169,7 @@ class ModuleSelection(BaseModel):
     preprocessing: bool = True
     trimming: bool = True
     denoising: bool = True
+    clustering: bool = False
     classification: bool = True
     pseudogene_filtering: bool = False
     stats: bool = True
@@ -206,6 +207,11 @@ class TrimmingConfig(BaseModel):
 class DenoisingConfig(BaseModel):
     pool_samples: bool = Field(default=True)
     min_cluster_size: int = Field(default=8, ge=1, le=1000)
+    threads: int = Field(default=4, ge=1, le=32)
+
+
+class ClusteringConfig(BaseModel):
+    cluster_id: float = Field(default=0.97, ge=0.5, le=1.0, description="OTU clustering similarity threshold")
     threads: int = Field(default=4, ge=1, le=32)
 
 
@@ -294,6 +300,7 @@ class UserConfig(BaseModel):
     preprocessing: Optional[PreprocessingConfig] = None
     trimming: Optional[TrimmingConfig] = None
     denoising: Optional[DenoisingConfig] = None
+    clustering: Optional[ClusteringConfig] = None
     classification: Optional[ClassificationConfig] = None
     pseudogene_filtering: Optional[PseudogeneConfig] = None
     stats: Optional[StatsConfig] = None
