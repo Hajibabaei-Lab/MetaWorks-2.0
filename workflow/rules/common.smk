@@ -1,6 +1,11 @@
 # modules/common.smk
 # Shared helper functions for all MetaWorks Snakemake modules.
-# Include this file FIRST in Snakefile_ESV so every downstream .smk can use these.
+# Include this file FIRST in Snakefile so every downstream .smk can use these.
+
+from lib.config.module_registry import (  # noqa: E402,F401 (already on sys.path; re-exported for downstream .smk)
+    clustering_enabled,
+    is_module_enabled,
+)
 
 
 def get_module_config(config, module_name):
@@ -11,19 +16,6 @@ def get_module_config(config, module_name):
     """
     section = config.get(module_name, {})
     return section if isinstance(section, dict) else {}
-
-
-def is_module_enabled(config, module_name, default=True):
-    """Check whether a module is enabled via config["modules"][name]."""
-    modules = config.get("modules", {})
-    if not isinstance(modules, dict):
-        return default
-    value = modules.get(module_name, default)
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ("1", "true", "yes", "on")
-    return bool(value)
 
 
 def get_output_dir(config):
@@ -44,11 +36,6 @@ def get_classification_engine(config):
         if engine is not None:
             return str(engine).strip().lower()
     return "rdp"
-
-
-def clustering_enabled(config):
-    """Check whether OTU clustering is active."""
-    return is_module_enabled(config, "clustering", default=False)
 
 
 def get_sequences_input(config):

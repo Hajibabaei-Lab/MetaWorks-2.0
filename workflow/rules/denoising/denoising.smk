@@ -1,5 +1,5 @@
 # rules/denoising.smk
-# Uses shared helpers from modules/common.smk (get_module_config).
+# Uses shared helpers from rules/common.smk.
 
 DENOISING_CONFIG = get_module_config(config, "denoising")
 

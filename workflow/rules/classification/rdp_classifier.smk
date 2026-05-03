@@ -1,5 +1,5 @@
 # RDP classification backend
-# Uses shared helpers from modules/common.smk (get_module_config).
+# Uses shared helpers from rules/common.smk.
 # CLASSIFICATION_CONFIG is set by the parent classifier.smk.
 
 rule taxonomic_assignment:

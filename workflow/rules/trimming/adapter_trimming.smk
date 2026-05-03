@@ -1,5 +1,5 @@
 # rules/adapter_trimming.smk
-# Uses shared helpers from modules/common.smk (get_module_config).
+# Uses shared helpers from rules/common.smk.
 
 TRIMMING_CONFIG = get_module_config(config, "trimming")
 PREPROCESSING_CONFIG = get_module_config(config, "preprocessing")

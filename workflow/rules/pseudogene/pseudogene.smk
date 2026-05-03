@@ -1,5 +1,5 @@
 # rules/pseudogene.smk
-# Uses shared helpers from modules/common.smk (get_module_config, is_module_enabled).
+# Uses shared helpers from rules/common.smk and lib.config.module_registry.
 
 PSEUDOGENE_CONFIG = get_module_config(config, "pseudogene_filtering")
 CLASSIFICATION_CONFIG = get_module_config(config, "classification")
@@ -17,7 +17,7 @@ module orfs_longest:
     config: PSEUDOGENE_SUBMODULE_CONFIG
 
 pseudogene_enabled = (
-    is_module_enabled(config, "pseudogene_filtering", default=True)
+    is_module_enabled(config, "pseudogene_filtering")
     and PSEUDOGENE_CONFIG.get("method", "none") in ["hmm", "orf"]
 )
 

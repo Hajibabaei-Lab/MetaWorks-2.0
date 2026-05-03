@@ -20,61 +20,6 @@ class ValidationError(_BaseValidationError):
 
 
 # ============================================================================
-# System Configuration Schema
-# ============================================================================
-
-
-class SystemInfo(BaseModel):
-    system: Dict[str, Any]
-
-
-class SystemPaths(BaseModel):
-    paths: Dict[str, str]
-
-
-class SystemRuntime(BaseModel):
-    runtime: Dict[str, Any]
-
-
-class SystemSchedulers(BaseModel):
-    schedulers: Dict[str, Any]
-
-
-class SystemResources(BaseModel):
-    resources: Dict[str, Any]
-
-
-class SystemLogging(BaseModel):
-    logging: Dict[str, Any]
-
-
-class SystemSecurity(BaseModel):
-    security: Dict[str, Any]
-
-
-class SystemMonitoring(BaseModel):
-    monitoring: Dict[str, Any]
-
-
-class SystemMaintenance(BaseModel):
-    maintenance: Dict[str, Any]
-
-
-class SystemConfig(BaseModel):
-    """System configuration schema."""
-
-    system: Dict[str, Any]
-    paths: Dict[str, str]
-    runtime: Dict[str, Any]
-    schedulers: Dict[str, Any]
-    resources: Dict[str, Any]
-    logging: Dict[str, Any]
-    security: Dict[str, Any]
-    monitoring: Dict[str, Any]
-    maintenance: Dict[str, Any]
-
-
-# ============================================================================
 # Module Configuration Schema
 # ============================================================================
 

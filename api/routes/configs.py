@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from lib.config import ConfigManager
+from lib.config.config_manager import ResolvedConfig
 from lib.exceptions import ConfigurationError, ValidationError
 
 from ..schemas import (
@@ -84,20 +85,15 @@ def _build_config_router(manager: "JobManager", settings: "Settings") -> APIRout
         try:
             config_manager = _get_config_manager()
             
-            # Load defaults and profile
             config_manager.load_defaults_config()
             config_manager.load_module_configs()
             config_manager.load_profile(payload.profile)
             
-            # Apply overrides
             if payload.overrides:
                 config_manager.user_config = dict(payload.overrides)
             
-            # Merge with workflow type
-            config_manager.merge(workflow=payload.workflow.value)
-            
-            # Export as YAML
-            merged_dict = config_manager.export_for_workflow(payload.workflow.value)
+            resolved: ResolvedConfig = config_manager.merge(workflow=payload.workflow.value)
+            merged_dict = resolved.export_for_workflow()
             merged_yaml = yaml.safe_dump(merged_dict, sort_keys=False)
             
             return RenderConfigResponse(workflow=payload.workflow, merged=merged_yaml)
@@ -120,13 +116,12 @@ def _build_config_router(manager: "JobManager", settings: "Settings") -> APIRout
     @router.get("/configs/defaults/{workflow}", response_class=PlainTextResponse)
     def get_default_config(workflow: WorkflowType) -> str:
         """Get default configuration for a workflow (legacy endpoint)."""
-        # Load defaults and render with no profile
         try:
             config_manager = _get_config_manager()
             config_manager.load_defaults_config()
             config_manager.load_module_configs()
-            config_manager.merge(workflow=workflow.value)
-            merged_dict = config_manager.export_for_workflow(workflow.value)
+            resolved: ResolvedConfig = config_manager.merge(workflow=workflow.value)
+            merged_dict = resolved.export_for_workflow()
             return yaml.safe_dump(merged_dict, sort_keys=False)
         except Exception as exc:
             raise HTTPException(
@@ -141,8 +136,8 @@ def _build_config_router(manager: "JobManager", settings: "Settings") -> APIRout
             config_manager = _get_config_manager()
             config_manager.load_defaults_config()
             config_manager.load_module_configs()
-            config_manager.merge(workflow=workflow.value)
-            sections = config_manager.export_for_workflow(workflow.value)
+            resolved: ResolvedConfig = config_manager.merge(workflow=workflow.value)
+            sections = resolved.export_for_workflow()
         except ConfigurationError as exc:
             raise HTTPException(
                 status_code=404,

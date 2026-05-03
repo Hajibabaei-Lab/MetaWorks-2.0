@@ -218,8 +218,8 @@ class JobManager:
             if overrides:
                 config_manager.user_config = dict(overrides)
             
-            config_manager.merge(workflow=workflow.value)
-            merged_dict = config_manager.export_for_workflow(workflow.value)
+            resolved = config_manager.merge(workflow=workflow.value)
+            merged_dict = resolved.export_for_workflow()
             rendered = yaml.safe_dump(merged_dict, sort_keys=False)
             
             return RenderConfigResponse(workflow=workflow, merged=rendered)
@@ -241,8 +241,8 @@ class JobManager:
         config_manager = self._get_config_manager()
         config_manager.load_defaults_config()
         config_manager.load_module_configs()
-        config_manager.merge(workflow=workflow.value)
-        return config_manager.export_for_workflow(workflow.value)
+        resolved = config_manager.merge(workflow=workflow.value)
+        return resolved.export_for_workflow()
 
     def _write_rendered_config(
         self, 

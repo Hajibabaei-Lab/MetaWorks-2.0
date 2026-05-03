@@ -2,7 +2,7 @@
 #
 # Produces MetaWorks' RDP-like `rdp.out.tmp` so downstream modules (pseudogene, results)
 # continue to work unchanged.
-# Uses shared helpers from modules/common.smk (get_module_config).
+# Uses shared helpers from rules/common.smk.
 # CLASSIFICATION_CONFIG is set by the parent classifier.smk.
 
 SINTAX_CONFIG = CLASSIFICATION_CONFIG.get("sintax", {}) if isinstance(CLASSIFICATION_CONFIG.get("sintax", {}), dict) else {}

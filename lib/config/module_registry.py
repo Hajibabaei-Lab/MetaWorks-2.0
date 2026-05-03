@@ -445,6 +445,11 @@ def is_module_enabled(config: Dict[str, Any], module_name: str) -> bool:
     return bool(value)
 
 
+def clustering_enabled(config: Dict[str, Any]) -> bool:
+    """Check whether OTU clustering is active."""
+    return is_module_enabled(config, "clustering")
+
+
 def classification_stage_enabled(config: Dict[str, Any]) -> bool:
     """Return whether the classification stage can run."""
     return is_module_enabled(config, "denoising") and is_module_enabled(config, "classification")

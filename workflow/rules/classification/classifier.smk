@@ -1,6 +1,6 @@
 # Classification rule selector
 # Chooses a single classifier backend per run.
-# Uses shared get_classification_engine() from modules/common.smk.
+# Uses shared helpers from rules/common.smk.
 
 CLASSIFICATION_CONFIG = get_module_config(config, "classification")
 
