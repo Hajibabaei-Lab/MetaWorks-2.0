@@ -399,6 +399,7 @@ class TestSchemaSectionEnabledBy:
             ("trimming", "modules.trimming"),
             ("denoising", "modules.denoising"),
             ("classification", "modules.classification"),
+            ("itsx_extraction", "modules.itsx_extraction"),
             ("pseudogene_filtering", "modules.pseudogene_filtering"),
             ("stats", "modules.stats"),
         ],
@@ -580,3 +581,46 @@ class TestSchemaEndpoint:
             assert isinstance(section.fields, dict)
             if section.enabled_by:
                 assert section.collapsed is not None
+
+
+class TestSchemaITSxSection:
+    def test_itsx_section_present_in_schema(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        assert "itsx_extraction" in schema["sections"]
+
+    def test_itsx_section_has_correct_fields(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        itsx = schema["sections"]["itsx_extraction"]
+        assert "its_part" in itsx["fields"]
+        assert "threads" in itsx["fields"]
+
+    def test_itsx_section_enabled_by_module_toggle(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        itsx = schema["sections"]["itsx_extraction"]
+        assert itsx["enabled_by"] == "modules.itsx_extraction"
+
+    def test_itsx_its_part_is_select(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        field = schema["sections"]["itsx_extraction"]["fields"]["its_part"]
+        assert field["type"] == "select"
+        assert "ITS1" in field["options"]
+        assert "ITS2" in field["options"]
+
+    def test_itsx_threads_is_integer(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        field = schema["sections"]["itsx_extraction"]["fields"]["threads"]
+        assert field["type"] == "integer"
+        assert field["default"] == 4
+
+    def test_itsx_modules_toggle_in_schema(self):
+        defaults = _load_defaults()
+        schema = build_config_schema(defaults, {}, "default", "esv")
+        modules_fields = schema["sections"]["modules"]["fields"]
+        assert "itsx_extraction" in modules_fields
+        assert modules_fields["itsx_extraction"]["type"] == "boolean"
+        assert modules_fields["itsx_extraction"]["default"] is False

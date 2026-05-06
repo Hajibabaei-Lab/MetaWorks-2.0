@@ -39,10 +39,13 @@ def get_classification_engine(config):
 
 
 def get_sequences_input(config):
-    """Return the FASTA file for classification: centroids.fasta if clustering, else denoised."""
+    """Return the FASTA file for classification: centroids if clustering, ITSx output if ITSx active, else denoised."""
     out = config["pipeline"]["output_dir"]
     if clustering_enabled(config):
         return out + "/centroids.fasta"
+    if is_module_enabled(config, "itsx_extraction"):
+        its_part = config.get("itsx_extraction", {}).get("its_part", "ITS2")
+        return out + f"/ITSx_out.{its_part}.fasta.stripped"
     return out + "/cat.denoised.nonchimeras"
 
 

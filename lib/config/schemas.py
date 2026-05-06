@@ -115,6 +115,7 @@ class ModuleSelection(BaseModel):
     trimming: bool = True
     denoising: bool = True
     clustering: bool = False
+    itsx_extraction: bool = False
     classification: bool = True
     pseudogene_filtering: bool = False
     stats: bool = True
@@ -160,6 +161,18 @@ class ClusteringConfig(BaseModel):
     threads: int = Field(default=4, ge=1, le=32)
 
 
+class ITSxConfig(BaseModel):
+    its_part: str = Field(default="ITS2", description="ITS region to extract")
+    threads: int = Field(default=4, ge=1, le=32)
+
+    @field_validator("its_part")
+    @classmethod
+    def validate_its_part(cls, v):
+        if v not in ["ITS1", "ITS2"]:
+            raise ValueError('its_part must be "ITS1" or "ITS2"')
+        return v
+
+
 class ClassificationConfig(BaseModel):
     engine: str = Field(default="rdp", description="Classifier backend (one per run)")
     marker: str = Field(default="COI", description="Marker gene")
@@ -201,7 +214,7 @@ class PseudogeneConfig(BaseModel):
     )
     taxon1: str = Field(default="-e Arthropoda", description="First grep pattern")
     taxon2: str = Field(default="", description="Second grep pattern (only for compound search)")
-    hmm_profile: str = Field(default="config/hmm/bold.hmm")
+    hmm_profile: Optional[str] = Field(default="config/hmm/bold.hmm")
     genetic_code: int = Field(default=5, ge=1, le=33)
     orf_start_codon: int = Field(default=2, ge=0, le=2)
     min_orf_length: int = Field(default=30, ge=30, le=10000)
@@ -246,6 +259,7 @@ class UserConfig(BaseModel):
     trimming: Optional[TrimmingConfig] = None
     denoising: Optional[DenoisingConfig] = None
     clustering: Optional[ClusteringConfig] = None
+    itsx_extraction: Optional[ITSxConfig] = None
     classification: Optional[ClassificationConfig] = None
     pseudogene_filtering: Optional[PseudogeneConfig] = None
     stats: Optional[StatsConfig] = None

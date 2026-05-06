@@ -133,6 +133,43 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
             }
         ],
     },
+    "itsx_extraction": {
+        "module": {
+            "name": "itsx_extraction",
+            "version": "2.0.0",
+            "description": "Extract ITS regions using ITSx before classification.",
+            "author": "Hajibabaei Lab",
+            "enabled_by_default": False,
+        },
+        "directory": "itsx",
+        "snakefile": "workflow/rules/itsx/itsx_extraction.smk",
+        "config_section": "itsx_extraction",
+        "compatible_workflows": ["esv"],
+        "activation": "enabled",
+        "stage": "denoising",
+        "terminal_outputs": [],
+        "validation": [
+            {
+                "parameter": "its_part",
+                "type": "string",
+                "allowed": ["ITS1", "ITS2"],
+                "description": "ITS region to extract (ITS1 or ITS2).",
+            },
+            {
+                "parameter": "threads",
+                "type": "integer",
+                "min": 1,
+                "max": 32,
+                "description": "Number of threads for ITSx.",
+            },
+        ],
+        "resources": {
+            "default": {"threads": 4, "memory_mb": 8000, "time_minutes": 120},
+            "high_load": {"threads": 8, "memory_mb": 16000, "time_minutes": 180},
+        },
+        "depends_on": ["denoising"],
+        "checkpoints": [],
+    },
     "clustering": {
         "module": {
             "name": "clustering",
@@ -562,7 +599,7 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
     """Resolve durable workflow targets for rule all."""
     output_dir = config["pipeline"]["output_dir"]
     samples_list = list(samples)
-    stage_rank = {"trimming": 0, "denoising": 1, "clustering": 2, "classification": 3}
+    stage_rank = {"trimming": 0, "denoising": 1, "clustering": 2, "classification": 3}  # noqa: RUF012
 
     included = _resolve_included_module_names(config)
     highest_stage: Optional[str] = None

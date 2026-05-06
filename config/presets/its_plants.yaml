@@ -1,12 +1,21 @@
 # ITS Plants Profile
 # For plant community analysis using Internal Transcribed Spacer
 # Requires a custom-trained RDP classifier
-# Note: ITS is non-coding, so pseudogene filtering is not applicable
+# Enables ITSx extraction for ITS2 region
 
 profile:
   name: "its_plants"
   description: "ITS metabarcoding for plants"
   marker: "ITS_plants"
+
+# Enable ITSx extraction
+modules:
+  itsx_extraction: true
+  pseudogene_filtering: false
+
+# ITSx extraction settings
+itsx_extraction:
+  its_part: "ITS2"
 
 # Classification settings
 classification:
@@ -14,8 +23,3 @@ classification:
   rdp:
     use_custom_classifier: true
     classifier_path: null
-    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/ITS_plants.properties"
-
-# Pseudogene filtering not applicable for ITS (non-coding spacer)
-modules:
-  pseudogene_filtering: false

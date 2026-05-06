@@ -1,11 +1,20 @@
 # ITS Fungi Profile
 # For fungal community analysis
 # Uses built-in RDP classifier with UNITE database
+# Enables ITSx extraction for ITS2 region
 
 profile:
   name: "its"
   description: "ITS metabarcoding for fungi"
   marker: "ITS_fungi"
+
+# Enable ITSx extraction
+modules:
+  itsx_extraction: true
+
+# ITSx extraction settings
+itsx_extraction:
+  its_part: "ITS2"
 
 # Classification settings for ITS
 classification:
@@ -15,6 +24,4 @@ classification:
     classifier_path: null
     builtin_classifier: "fungalits_unite"
 
-# Pseudogene filtering not typically used for ITS
-# ITS is non-coding, so pseudogene filtering is not applicable
-# Module toggle is in modules.pseudogene_filtering (set to false in defaults)
+# Pseudogene filtering not applicable for ITS (non-coding spacer)

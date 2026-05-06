@@ -241,6 +241,150 @@ def load_app(monkeypatch, **env):
     return main_module.app
 
 
+class TestITSxModule:
+    def test_itsx_disabled_by_default(self):
+        config = {"modules": {}}
+        assert is_module_enabled(config, "itsx_extraction") is False
+
+    def test_itsx_enabled_when_toggle_true(self):
+        config = {"modules": {"itsx_extraction": True}}
+        assert is_module_enabled(config, "itsx_extraction") is True
+
+    def test_itsx_registry_entry_exists(self):
+        from lib.config.module_registry import MODULE_REGISTRY
+
+        assert "itsx_extraction" in MODULE_REGISTRY
+        entry = MODULE_REGISTRY["itsx_extraction"]
+        assert entry["config_section"] == "itsx_extraction"
+        assert entry["stage"] == "denoising"
+        assert "denoising" in entry["depends_on"]
+        assert entry["module"]["enabled_by_default"] is False
+
+    def test_itsx_included_when_enabled(self):
+        from lib.config.module_registry import _resolve_included_module_names
+
+        config = {
+            "modules": {
+                "trimming": True,
+                "denoising": True,
+                "classification": True,
+                "itsx_extraction": True,
+            }
+        }
+        names = _resolve_included_module_names(config)
+        assert "itsx_extraction" in names
+
+    def test_itsx_not_included_when_disabled(self):
+        from lib.config.module_registry import _resolve_included_module_names
+
+        config = {
+            "modules": {
+                "trimming": True,
+                "denoising": True,
+                "classification": True,
+            }
+        }
+        names = _resolve_included_module_names(config)
+        assert "itsx_extraction" not in names
+
+
+class TestITSxConfig:
+    def test_defaults_yaml_has_itsx_section(self):
+        resolved = ConfigManager.load(repo_root=str(REPO_ROOT))
+        itsx = resolved.merged.get("itsx_extraction", {})
+        assert itsx.get("its_part") == "ITS2"
+        assert itsx.get("threads") == 4
+
+    def test_defaults_yaml_has_itsx_toggle(self):
+        resolved = ConfigManager.load(repo_root=str(REPO_ROOT))
+        assert resolved.merged["modules"]["itsx_extraction"] is False
+
+    def test_itsx_config_model_validates_its_part(self):
+        from lib.config.schemas import ITSxConfig
+
+        config = ITSxConfig(its_part="ITS1", threads=4)
+        assert config.its_part == "ITS1"
+
+    def test_itsx_config_model_rejects_bad_its_part(self):
+        from lib.config.schemas import ITSxConfig
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="its_part"):
+            ITSxConfig(its_part="bad", threads=4)
+
+    def test_module_selection_has_itsx_toggle(self):
+        from lib.config.schemas import ModuleSelection
+
+        ms = ModuleSelection()
+        assert ms.itsx_extraction is False
+
+    def test_module_selection_itsx_can_be_true(self):
+        from lib.config.schemas import ModuleSelection
+
+        ms = ModuleSelection(itsx_extraction=True)
+        assert ms.itsx_extraction is True
+
+    def test_merged_config_has_itsx_section(self):
+        resolved = ConfigManager.load(profile="coi", repo_root=str(REPO_ROOT))
+        assert "itsx_extraction" in resolved.merged
+
+
+class TestITSxProfileMerge:
+    def test_its_profile_enables_itsx(self):
+        resolved = ConfigManager.load(profile="its", repo_root=str(REPO_ROOT))
+        assert resolved.merged["modules"]["itsx_extraction"] is True
+
+    def test_its_profile_sets_marker(self):
+        resolved = ConfigManager.load(profile="its", repo_root=str(REPO_ROOT))
+        assert resolved.merged["classification"]["marker"] == "ITS_fungi"
+
+    def test_its_profile_has_itsx_config(self):
+        resolved = ConfigManager.load(profile="its", repo_root=str(REPO_ROOT))
+        itsx = resolved.merged["itsx_extraction"]
+        assert itsx["its_part"] == "ITS2"
+        assert itsx["threads"] == 4
+
+    def test_its_plants_profile_enables_itsx(self):
+        resolved = ConfigManager.load(profile="its_plants", repo_root=str(REPO_ROOT))
+        assert resolved.merged["modules"]["itsx_extraction"] is True
+
+    def test_its_plants_profile_sets_marker(self):
+        resolved = ConfigManager.load(profile="its_plants", repo_root=str(REPO_ROOT))
+        assert resolved.merged["classification"]["marker"] == "ITS_plants"
+
+    def test_non_its_profile_keeps_itsx_disabled(self):
+        resolved = ConfigManager.load(profile="coi", repo_root=str(REPO_ROOT))
+        assert resolved.merged["modules"]["itsx_extraction"] is False
+
+
+class TestITSxGetSequencesInput:
+    def test_itsx_active_returns_stripped_path(self):
+        config = {
+            "pipeline": {"output_dir": "/tmp/test"},
+            "modules": {"clustering": False, "itsx_extraction": True},
+            "itsx_extraction": {"its_part": "ITS2"},
+        }
+        assert is_module_enabled(config, "itsx_extraction")
+        assert not clustering_enabled(config)
+
+    def test_itsx_inactive_returns_denoised(self):
+        config = {
+            "pipeline": {"output_dir": "/tmp/test"},
+            "modules": {"clustering": False, "itsx_extraction": False},
+        }
+        assert not is_module_enabled(config, "itsx_extraction")
+        assert not clustering_enabled(config)
+
+    def test_clustering_takes_priority_over_itsx(self):
+        config = {
+            "pipeline": {"output_dir": "/tmp/test"},
+            "modules": {"clustering": True, "itsx_extraction": True},
+            "itsx_extraction": {"its_part": "ITS2"},
+        }
+        assert clustering_enabled(config)
+        assert is_module_enabled(config, "itsx_extraction")
+
+
 class TestApiRoutesWithResolvedConfig:
     def test_render_config_returns_yaml(self, monkeypatch):
         from fastapi.testclient import TestClient

@@ -23,6 +23,7 @@ modules:
   trimming: true
   denoising: true
   clustering: false
+  itsx_extraction: false
   classification: true
   classification_engine: "rdp"
   pseudogene_filtering: false
@@ -46,6 +47,13 @@ trimming:
 denoising:
   pool_samples: true
   min_cluster_size: 8
+  threads: 4
+
+# ============================================================================
+# ITSx Extraction Parameters
+# ============================================================================
+itsx_extraction:
+  its_part: "ITS2"
   threads: 4
 
 # ============================================================================
