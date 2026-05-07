@@ -1,33 +1,44 @@
+import argparse
 import sys
 
 import pandas as pd
 from Bio import SeqIO
 from marker_defs import get_rdp_csv_header, MARKER_TO_CONDITION
 
-filename = sys.argv[1]
-headers = []
-for record in SeqIO.parse(open(filename), 'fasta'):
-    headers.append(record.id)
 
-filename2 = sys.argv[2]
-max_cols = max(len(line.split('\t')) for line in open(filename2) if line.strip())
-df = pd.read_csv(filename2, sep='\t', header=None, names=range(max_cols))
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Filter RDP taxonomy output by FASTA headers and add column names."
+    )
+    parser.add_argument("filename", help="FASTA file with sequence headers to keep")
+    parser.add_argument("filename2", help="RDP taxonomy output (tab-delimited)")
+    parser.add_argument("marker", help="Marker name (e.g. COI, 16S)")
+    args = parser.parse_args(argv)
 
-marker = sys.argv[3]
+    headers = []
+    for record in SeqIO.parse(open(args.filename), 'fasta'):
+        headers.append(record.id)
 
-if marker not in MARKER_TO_CONDITION:
-    print(f"Warning: Unknown marker '{marker}', outputting without column headers", file=sys.stderr)
-    print(df.to_csv(index=False, header=False))
-    sys.exit(0)
+    max_cols = max(len(line.split('\t')) for line in open(args.filename2) if line.strip())
+    df = pd.read_csv(args.filename2, sep='\t', header=None, names=range(max_cols))
 
-prefix = ['GlobalESV', 'Strand']
-taxonomy_cols = [c for c in get_rdp_csv_header(marker).split(',') if c]
-expected = len(prefix) + len(taxonomy_cols)
-actual = len(df.columns)
-if actual > expected:
-    taxonomy_cols += [f'extra_rank{i}' for i in range(actual - expected)]
-elif actual < expected:
-    taxonomy_cols = taxonomy_cols[: actual - len(prefix)]
-df_filtered = df[df[0].isin(headers)]
-df_filtered.columns = prefix + taxonomy_cols
-print(df_filtered.to_csv(index=False, header=True))
+    if args.marker not in MARKER_TO_CONDITION:
+        print(f"Warning: Unknown marker '{args.marker}', outputting without column headers", file=sys.stderr)
+        print(df.to_csv(index=False, header=False))
+        sys.exit(0)
+
+    prefix = ['GlobalESV', 'Strand']
+    taxonomy_cols = [c for c in get_rdp_csv_header(args.marker).split(',') if c]
+    expected = len(prefix) + len(taxonomy_cols)
+    actual = len(df.columns)
+    if actual > expected:
+        taxonomy_cols += [f'extra_rank{i}' for i in range(actual - expected)]
+    elif actual < expected:
+        taxonomy_cols = taxonomy_cols[: actual - len(prefix)]
+    df_filtered = df[df[0].isin(headers)]
+    df_filtered.columns = prefix + taxonomy_cols
+    print(df_filtered.to_csv(index=False, header=True))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""
-Filter ESV table by ESV IDs present in ORF FASTA file.
-
-Usage:
-    python filter_ESV_table.py <esv_table.tsv> <orfs.fasta>
-
-Arguments:
-    esv_table.tsv: ESV table in TSV format (input)
-    orfs.fasta: FASTA file with ESV IDs (input)
-    Output: Filtered ESV table printed to stdout
-
-Author: Teresita M. Porter, August 18, 2022
-"""
-
+import argparse
 import sys
 from pathlib import Path
 
@@ -20,16 +7,16 @@ import pandas as pd
 from Bio import SeqIO
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(
-            "Usage: python filter_ESV_table.py <esv_table.tsv> <orfs.fasta>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Filter ESV table by ESV IDs present in ORF FASTA file."
+    )
+    parser.add_argument("esv_table_path", help="ESV table in TSV format")
+    parser.add_argument("orfs_path", help="FASTA file with ESV IDs to keep")
+    args = parser.parse_args(argv)
 
-    esv_table_path = Path(sys.argv[1])
-    orfs_path = Path(sys.argv[2])
+    esv_table_path = Path(args.esv_table_path)
+    orfs_path = Path(args.orfs_path)
 
     if not esv_table_path.exists():
         print(f"ESV table file not found: {esv_table_path}", file=sys.stderr)

@@ -1,32 +1,19 @@
 #!/usr/bin/env python3
-"""
-Merge multiple ESV tables into a single combined table.
-
-Usage:
-    python merge_esv_tables.py <esv_table1.tsv> <esv_table2.tsv> ...
-
-Arguments:
-    One or more ESV tables in TSV format (input)
-    Output: Merged ESV table printed to stdout
-
-Author: Alex Song, July 2025
-"""
-
+import argparse
 import sys
 from pathlib import Path
 
 import pandas as pd
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(
-            "Usage: python merge_esv_tables.py <esv_table1.tsv> <esv_table2.tsv> ...",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Merge multiple ESV tables into a single combined table."
+    )
+    parser.add_argument("table_paths", nargs="+", help="ESV table files in TSV format")
+    args = parser.parse_args(argv)
 
-    table_paths = [Path(f) for f in sys.argv[1:]]
+    table_paths = [Path(p) for p in args.table_paths]
 
     for table_path in table_paths:
         if not table_path.exists():

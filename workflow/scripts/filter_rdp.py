@@ -1,32 +1,29 @@
 #!/usr/bin/env python3
-"""Filter RDP output by removing sequences without matching ORFs."""
-import sys
+import argparse
 
 import numpy as np
 
 
-def main():
-    if len(sys.argv) < 4:
-        sys.exit("Usage: {} hmm.txt orfs.fasta.nt.filtered rdp.out.tmp".format(sys.argv[0]))
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Filter RDP output by removing sequences without matching ORFs."
+    )
+    parser.add_argument("hmm_file", help="HMMER output file")
+    parser.add_argument("orfs_file", help="Filtered ORFs FASTA file")
+    parser.add_argument("rdp_file", help="RDP output file to filter")
+    args = parser.parse_args(argv)
 
-    hmm_file = sys.argv[1]
-    orfs_file = sys.argv[2]
-    rdp_file = sys.argv[3]
+    hmm_dict = {}
+    scores = []
 
-    # -------------------------------
-    # Parse HMMER output and hash scores
-    # -------------------------------
-    hmm_dict = {}   # key: id, value: score
-    scores = []     # list of scores for percentile calculation
-
-    with open(hmm_file, "r") as f:
+    with open(args.hmm_file, "r") as f:
         for line in f:
             line = line.rstrip("\n")
             if line.startswith("#"):
                 continue
-            parts = line.split()  # split on any whitespace
+            parts = line.split()
             if len(parts) < 6:
-                continue  # skip incomplete lines
+                continue
             id_val = parts[2]
             try:
                 score_val = float(parts[5])
@@ -35,9 +32,6 @@ def main():
             hmm_dict[id_val] = score_val
             scores.append(score_val)
 
-    # -------------------------------
-    # Compute cutoff values using percentiles (25th and 75th)
-    # -------------------------------
     p25 = np.percentile(scores, 25)
     p75 = np.percentile(scores, 75)
     iqr = p75 - p25
@@ -46,20 +40,16 @@ def main():
 
     good_ids = [id_val for id_val, score in hmm_dict.items() if not (score < lc or score > uc)]
 
-    # -------------------------------
-    # Parse filtered nt orfs FASTA and hash sequences
-    # -------------------------------
-    orfs_dict = {}  # key: id, value: sequence
+    orfs_dict = {}
 
-    with open(orfs_file, "r") as f:
+    with open(args.orfs_file, "r") as f:
         orfs_lines = f.readlines()
 
     i = 0
     while i < len(orfs_lines):
         line = orfs_lines[i].rstrip("\n")
         if line.startswith(">"):
-            id_line = line[1:].strip()  # remove '>' and strip whitespace
-            # Next line is the sequence (assuming one-line sequences)
+            id_line = line[1:].strip()
             if i + 1 < len(orfs_lines):
                 seq_line = orfs_lines[i+1].rstrip("\n")
                 orfs_dict[id_line] = seq_line
@@ -67,10 +57,7 @@ def main():
         else:
             i += 1
 
-    # -------------------------------
-    # Parse rdp.out.tmp and add ORF sequence if available
-    # -------------------------------
-    with open(rdp_file, "r") as f:
+    with open(args.rdp_file, "r") as f:
         for line in f:
             line = line.rstrip("\n")
             if not line:
@@ -83,7 +70,7 @@ def main():
             if id_val in orfs_dict and id_val in good_ids:
                 seq = orfs_dict[id_val]
                 print(f"{id_val}\t{seq}\t{record}")
-            # Else: do not print rows that were screened out
+
 
 if __name__ == "__main__":
     main()

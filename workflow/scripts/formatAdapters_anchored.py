@@ -1,49 +1,51 @@
-# Teresita M. Porter, May 5, 2021
-
-import sys
+import argparse
 
 import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-# vars
-file_out = 'adapters.fasta'
 
-# read in csv
-filename = sys.argv[-1]
-df = pd.read_csv(filename)
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Create anchored linked adapter FASTA from a CSV file."
+    )
+    parser.add_argument("filename", help="CSV file with adapter definitions")
+    args = parser.parse_args(argv)
 
-# create fasta header for linked adapters
-df['SampleIDamplicon'] = df['SampleID'].str.cat(df['Amplicon'],sep="_")
-df['SampleIDamplicon'] = df['SampleIDamplicon'].astype(str) + ";"
+    file_out = 'adapters.fasta'
 
-# replace I with N where needed
-df['Forward'] = df['Forward'].str.replace('I', 'N')
-df['Reverse'] = df['Reverse'].str.replace('I', 'N')
+    df = pd.read_csv(args.filename)
 
-# reverse complement reverse primer
-i = 0
-rc = [None]*len(df['Reverse'])
-for x in df['Reverse']:
-	seq = Seq(x)
-	rc[i] = seq.reverse_complement()
-	rc[i] = str(rc[i])
-	i = i + 1
+    df['SampleIDamplicon'] = df['SampleID'].str.cat(df['Amplicon'], sep="_")
+    df['SampleIDamplicon'] = df['SampleIDamplicon'].astype(str) + ";"
 
-df['ReverseRC'] = rc
+    df['Forward'] = df['Forward'].str.replace('I', 'N')
+    df['Reverse'] = df['Reverse'].str.replace('I', 'N')
 
-# Linked adapters that are NOT anchored
-df['LinkedAdapters'] = df['Forward'].str.cat(df['ReverseRC'], sep="...")
+    i = 0
+    rc = [None] * len(df['Reverse'])
+    for x in df['Reverse']:
+        seq = Seq(x)
+        rc[i] = str(seq.reverse_complement())
+        i = i + 1
 
-# Linked adapters anchored at the 5' and 3' ends
-df['LinkedAdapters'] = df['LinkedAdapters'].map('^{}$'.format)
+    df['ReverseRC'] = rc
 
-record_list=[]
-with open(file_out, 'w') as f_out:
-	for index, row in df.iterrows():
-		record = SeqRecord(Seq(df['LinkedAdapters'].iloc[index]),
-		description = "",
-		id=df['SampleIDamplicon'].iloc[index])
-		record_list.append(record)
-	SeqIO.write(record_list, f_out, 'fasta')
+    df['LinkedAdapters'] = df['Forward'].str.cat(df['ReverseRC'], sep="...")
+    df['LinkedAdapters'] = df['LinkedAdapters'].map('^{}$'.format)
+
+    record_list = []
+    with open(file_out, 'w') as f_out:
+        for index, row in df.iterrows():
+            record = SeqRecord(
+                Seq(df['LinkedAdapters'].iloc[index]),
+                description="",
+                id=df['SampleIDamplicon'].iloc[index],
+            )
+            record_list.append(record)
+        SeqIO.write(record_list, f_out, 'fasta')
+
+
+if __name__ == "__main__":
+    main()

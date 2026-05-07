@@ -1,28 +1,30 @@
-# Teresita M. Porter, May 5, 2021
-
-#import numpy as np
-import sys
+import argparse
 
 from Bio import SeqIO
 
-#from Bio.Seq import Seq
-#from Bio.SeqRecord import SeqRecord
 
-# read in unique sample names into a list of strings
-lines=[]
-with open(sys.argv[2]) as f:
-	lines = f.readlines()
-#	print(lines)
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Create per-sample adapter FASTA files from a base adapters file and sample list."
+    )
+    parser.add_argument("adapters_file", help="Base adapters FASTA file")
+    parser.add_argument("samples_file", help="File with sample names (one per line)")
+    args = parser.parse_args(argv)
 
-# for each unique sample, print a new adapters.fasta file
-for sample in lines:
-	sample=sample.strip()
-	filename=sample + '_' + sys.argv[1]
-#	print(filename)
+    lines = []
+    with open(args.samples_file) as f:
+        lines = f.readlines()
 
-	# read in adapters.fasta
-	record_list=[]
-	for record in SeqIO.parse(sys.argv[1], "fasta"):
-		record.id=sample + '_' + record.id
-		record_list.append(record)
-	SeqIO.write(record_list, filename, 'fasta')
+    for sample in lines:
+        sample = sample.strip()
+        filename = sample + '_' + args.adapters_file
+
+        record_list = []
+        for record in SeqIO.parse(args.adapters_file, "fasta"):
+            record.id = sample + '_' + record.id
+            record_list.append(record)
+        SeqIO.write(record_list, filename, 'fasta')
+
+
+if __name__ == "__main__":
+    main()
