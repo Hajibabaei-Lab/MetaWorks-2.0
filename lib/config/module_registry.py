@@ -461,6 +461,50 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "checkpoints": [],
         "provides_global_targets": True,
     },
+    "global_otu": {
+        "module": {
+            "name": "global_otu",
+            "version": "2.0.0",
+            "description": "Cross-trial global OTU mapping using 97% clustering against globally dereplicated reference.",
+            "author": "Hajibabaei Lab",
+            "enabled_by_default": False,
+        },
+        "directory": "global",
+        "snakefile": "workflow/rules/global/global_otu.smk",
+        "config_section": "global_otu",
+        "compatible_workflows": ["esv"],
+        "activation": "enabled",
+        "stage": "post_classification",
+        "terminal_outputs": [],
+        "validation": [
+            {
+                "parameter": "trial_dirs",
+                "type": "list",
+                "description": "List of trial output directory paths containing denoised and results files.",
+            },
+            {
+                "parameter": "cluster_id",
+                "type": "float",
+                "min": 0.5,
+                "max": 1.0,
+                "description": "OTU clustering similarity threshold.",
+            },
+            {
+                "parameter": "threads",
+                "type": "integer",
+                "min": 1,
+                "max": 32,
+                "description": "Number of threads for VSEARCH.",
+            },
+        ],
+        "resources": {
+            "default": {"threads": 4, "memory_mb": 8000, "time_minutes": 120},
+            "high_load": {"threads": 8, "memory_mb": 16000, "time_minutes": 180},
+        },
+        "depends_on": [],
+        "checkpoints": [],
+        "provides_global_targets": True,
+    },
 }
 
 

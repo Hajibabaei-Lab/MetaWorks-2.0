@@ -432,3 +432,56 @@ class TestMapGlobalEsvsToResults:
             capture_output=True, text=True,
         )
         assert result.returncode != 0
+
+
+class TestMapGlobalOtusToResults:
+    def test_map_global_otus_has_main_function(self):
+        from workflow.scripts.map_global_otus_to_results import main
+        assert callable(main)
+
+    def test_map_global_otus_basic(self, tmp_path, capsys):
+        uc_content = "H\t0\t100\t100.0\t100.0\t0\t0\t0\tZotu_1\tOtu_001\n"
+        csv_content = "GlobalOTU,SampleName,ESVsize,ESVseq\nZotu_1,sample1,100,ACGT\n"
+        uc_path = tmp_path / "global.uc"
+        csv_path = tmp_path / "results.csv"
+        uc_path.write_text(uc_content)
+        csv_path.write_text(csv_content)
+        from workflow.scripts.map_global_otus_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert "TrialESV" in lines[0]
+        assert "GlobalOTU" in lines[0]
+        assert "Otu_001" in lines[1]
+
+    def test_map_global_otus_no_match(self, tmp_path, capsys):
+        uc_content = "N\t0\t100\t*\t*\t0\t0\t0\tZotu_1\t*\n"
+        csv_content = "GlobalOTU,SampleName,ESVsize,ESVseq\nZotu_1,sample1,100,ACGT\n"
+        uc_path = tmp_path / "global.uc"
+        csv_path = tmp_path / "results.csv"
+        uc_path.write_text(uc_content)
+        csv_path.write_text(csv_content)
+        from workflow.scripts.map_global_otus_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert "NoGlobalMatch" in lines[1]
+
+    def test_map_global_otus_empty_uc(self, tmp_path, capsys):
+        csv_content = "GlobalOTU,SampleName,ESVsize,ESVseq\nZotu_1,sample1,100,ACGT\n"
+        uc_path = tmp_path / "global.uc"
+        csv_path = tmp_path / "results.csv"
+        uc_path.write_text("")
+        csv_path.write_text(csv_content)
+        from workflow.scripts.map_global_otus_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert "NoGlobalMatch" in lines[1]
+
+    def test_missing_args_exits(self):
+        result = subprocess.run(
+            [sys.executable, "workflow/scripts/map_global_otus_to_results.py"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0
