@@ -1,7 +1,10 @@
 import argparse
 import sys
+from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from marker_defs import get_rdp_csv_header, MARKER_TO_CONDITION
 
 
