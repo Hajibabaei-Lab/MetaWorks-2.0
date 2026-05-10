@@ -424,6 +424,43 @@ MODULE_REGISTRY: Dict[str, Dict[str, Any]] = {
             }
         ],
     },
+    "global_esv": {
+        "module": {
+            "name": "global_esv",
+            "version": "2.0.0",
+            "description": "Cross-trial global ESV mapping using exact-match against SHA1-labeled dereplicated reference.",
+            "author": "Hajibabaei Lab",
+            "enabled_by_default": False,
+        },
+        "directory": "global",
+        "snakefile": "workflow/rules/global/global_esv.smk",
+        "config_section": "global_esv",
+        "compatible_workflows": ["esv"],
+        "activation": "enabled",
+        "stage": "post_classification",
+        "terminal_outputs": [],
+        "validation": [
+            {
+                "parameter": "trial_dirs",
+                "type": "list",
+                "description": "List of trial output directory paths containing denoised and results files.",
+            },
+            {
+                "parameter": "threads",
+                "type": "integer",
+                "min": 1,
+                "max": 32,
+                "description": "Number of threads for VSEARCH.",
+            },
+        ],
+        "resources": {
+            "default": {"threads": 4, "memory_mb": 8000, "time_minutes": 120},
+            "high_load": {"threads": 8, "memory_mb": 16000, "time_minutes": 180},
+        },
+        "depends_on": [],
+        "checkpoints": [],
+        "provides_global_targets": True,
+    },
 }
 
 
@@ -599,7 +636,7 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
     """Resolve durable workflow targets for rule all."""
     output_dir = config["pipeline"]["output_dir"]
     samples_list = list(samples)
-    stage_rank = {"trimming": 0, "denoising": 1, "clustering": 2, "classification": 3}  # noqa: RUF012
+    stage_rank = {"trimming": 0, "denoising": 1, "clustering": 2, "classification": 3, "post_classification": 4}  # noqa: RUF012
 
     included = _resolve_included_module_names(config)
     highest_stage: Optional[str] = None
@@ -614,13 +651,32 @@ def resolve_terminal_targets(config: Dict[str, Any], samples: Iterable[str]) -> 
             highest_stage = stage
 
     targets: list[str] = []
+    read_mode = config.get("trimming", {}).get("read_mode", "paired")
+    stats_skip = set()
+    if read_mode == "single":
+        stats_skip = {"stats/R2.stats", "stats/paired.stats"}
+
     for module_name in included:
         entry = MODULE_REGISTRY[module_name]
         include_outputs = entry.get("additive", False) or entry.get("stage") == highest_stage
         if not include_outputs:
             continue
         for pattern in entry.get("terminal_outputs", []):
+            if pattern in stats_skip:
+                continue
             targets.extend(_expand_terminal_output(output_dir, pattern, samples_list))
+
+    for module_name in included:
+        entry = MODULE_REGISTRY[module_name]
+        if not entry.get("provides_global_targets", False):
+            continue
+        config_section = entry.get("config_section", module_name)
+        module_config = config.get(config_section, {})
+        trial_dirs = sorted(module_config.get("trial_dirs", []))
+        if not trial_dirs:
+            continue
+        for trial_dir in trial_dirs:
+            targets.append(f"{trial_dir}/global_results.csv")
 
     deduped: list[str] = []
     seen: set[str] = set()

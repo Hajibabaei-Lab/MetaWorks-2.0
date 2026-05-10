@@ -28,6 +28,7 @@ modules:
   classification_engine: "rdp"
   pseudogene_filtering: false
   stats: true
+  global_esv: false
 
 # ============================================================================
 # Trimming Parameters (Cutadapt)
@@ -99,6 +100,13 @@ pseudogene_filtering:
 stats:
   per_sample: true
   combined: true
+
+# ============================================================================
+# Global ESV Parameters
+# ============================================================================
+global_esv:
+  trial_dirs: []
+  threads: 4
 
 # ============================================================================
 # Output Parameters

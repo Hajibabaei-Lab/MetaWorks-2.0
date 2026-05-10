@@ -291,3 +291,144 @@ class TestFormatAdaptersAnchoredFilename:
             capture_output=True, text=True,
         )
         assert result.returncode != 0
+
+
+class TestGrabSeqsFromResults:
+    def test_grab_seqs_has_main_function(self):
+        from workflow.scripts.grab_seqs_from_results import main
+        assert callable(main)
+
+    def test_grab_seqs_basic(self, tmp_path, capsys):
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq,Strand,kingdom\n"
+            "Zotu_1,sample1,100,ACGTACGT,+,Bacteria\n"
+            "Zotu_2,sample2,50,TGCATGCA,+,Fungi\n"
+        )
+        from workflow.scripts.grab_seqs_from_results import main
+        main([str(csv_path)])
+        captured = capsys.readouterr()
+        assert ">Zotu_1\n" in captured.out
+        assert "ACGTACGT\n" in captured.out
+        assert ">Zotu_2\n" in captured.out
+        assert "TGCATGCA\n" in captured.out
+
+    def test_grab_seqs_skips_header(self, tmp_path, capsys):
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq,Strand,kingdom\n"
+            "Zotu_1,sample1,100,ACGTACGT,+,Bacteria\n"
+        )
+        from workflow.scripts.grab_seqs_from_results import main
+        main([str(csv_path)])
+        captured = capsys.readouterr()
+        assert ">GlobalESV" not in captured.out
+        assert ">Zotu_1\n" in captured.out
+
+    def test_grab_seqs_short_row_warning(self, tmp_path, capsys):
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq\n"
+            "Zotu_1,sample1,100\n"
+        )
+        from workflow.scripts.grab_seqs_from_results import main
+        main([str(csv_path)])
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "Warning" in captured.err
+        assert "skipping row" in captured.err
+
+    def test_missing_args_exits(self):
+        result = subprocess.run(
+            [sys.executable, "workflow/scripts/grab_seqs_from_results.py"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0
+
+
+class TestMapGlobalEsvsToResults:
+    def test_map_global_esvs_has_main_function(self):
+        from workflow.scripts.map_global_esvs_to_results import main
+        assert callable(main)
+
+    def test_map_global_esvs_basic(self, tmp_path, capsys):
+        uc_path = tmp_path / "global.uc"
+        uc_path.write_text(
+            "H\t0\t100\t100.0\t100.0\t0\t0\t0\tZotu_1\tsha1abc123\n"
+            "H\t0\t100\t100.0\t100.0\t0\t0\t0\tZotu_2\tsha1def456\n"
+            "N\t0\t100\t*\t*\t0\t0\t0\tZotu_3\t*\n"
+        )
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq,Strand,kingdom,phylum,class,order,family,genus,species\n"
+            "Zotu_1,sample1,100,ACGT,+,Bacteria,Arthropoda,Insecta,Diptera,Mosquito,Aedes,albopictus\n"
+            "Zotu_2,sample1,50,TGCA,+,Bacteria,Nematoda,Chromadorea,Rhabditida,Caenorhabditis,elegans,\n"
+        )
+        from workflow.scripts.map_global_esvs_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert len(lines) == 3
+        header = lines[0]
+        assert "TrialESV" in header
+        assert "GlobalESV" in header
+        row1 = lines[1]
+        assert "sha1abc123" in row1
+        row2 = lines[2]
+        assert "sha1def456" in row2
+
+    def test_map_global_esvs_no_match(self, tmp_path, capsys):
+        uc_path = tmp_path / "global.uc"
+        uc_path.write_text(
+            "N\t0\t100\t*\t*\t0\t0\t0\tZotu_3\t*\n"
+        )
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq\n"
+            "Zotu_3,sample2,30,GGCC\n"
+        )
+        from workflow.scripts.map_global_esvs_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert len(lines) == 2
+        assert "NoGlobalMatch" in lines[1]
+
+    def test_map_global_esvs_empty_uc(self, tmp_path, capsys):
+        uc_path = tmp_path / "global.uc"
+        uc_path.write_text("")
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq\n"
+            "Zotu_1,sample1,100,ACGT\n"
+        )
+        from workflow.scripts.map_global_esvs_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = captured.out.strip().split("\n")
+        assert len(lines) == 2
+        assert "NoGlobalMatch" in lines[1]
+
+    def test_map_global_esvs_empty_results(self, tmp_path, capsys):
+        uc_path = tmp_path / "global.uc"
+        uc_path.write_text(
+            "H\t0\t100\t100.0\t100.0\t0\t0\t0\tZotu_1\tsha1abc123\n"
+        )
+        csv_path = tmp_path / "results.csv"
+        csv_path.write_text(
+            "GlobalESV,SampleName,ESVsize,ESVseq\n"
+        )
+        from workflow.scripts.map_global_esvs_to_results import main
+        main([str(uc_path), str(csv_path)])
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split("\n") if line]
+        assert len(lines) == 1
+        assert "TrialESV" in lines[0]
+        assert "GlobalESV" in lines[0]
+
+    def test_missing_args_exits(self):
+        result = subprocess.run(
+            [sys.executable, "workflow/scripts/map_global_esvs_to_results.py"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0

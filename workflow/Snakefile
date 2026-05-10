@@ -37,7 +37,7 @@ if dependency_errors:
 for module_include_path in resolve_module_include_paths(config, repo_root=str(REPO_ROOT)):
     include: module_include_path
 
-FINAL_TARGETS = resolve_terminal_targets(config, SAMPLES_UNIQUE)
+FINAL_TARGETS = resolve_terminal_targets(config, globals().get("SAMPLES_UNIQUE", []))
 
 # -------------------------------
 # Define workflow target
