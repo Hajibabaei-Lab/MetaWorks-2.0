@@ -36,7 +36,9 @@ modules:
 # ============================================================================
 trimming:
   read_mode: "paired"
+  adapter_source: "file"
   adapters: "tests/adapters_anchored.fasta"
+  adapter_csv: ""
   primer: ""
   process_as: "F"
   min_length: 150
