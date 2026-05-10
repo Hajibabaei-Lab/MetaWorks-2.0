@@ -35,7 +35,10 @@ modules:
 # Trimming Parameters (Cutadapt)
 # ============================================================================
 trimming:
+  read_mode: "paired"
   adapters: "tests/adapters_anchored.fasta"
+  primer: ""
+  process_as: "F"
   min_length: 150
   quality_cutoff: "20,20"
   error_rate: 0.1

@@ -1,5 +1,7 @@
 # rules/stats.smk
 
+STATS_READ_MODE = config.get("trimming", {}).get("read_mode", "paired")
+
 # -------------------------------------
 # Raw FASTQ R1
 # -------------------------------------
@@ -19,42 +21,43 @@ rule cat_raw1_stats_add_headers:
     shell: "set -euo pipefail; printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
 
 
-# -------------------------------------
-# Raw FASTQ R2
-# -------------------------------------
-rule raw2_stats:
-    input: lambda wildcards: get_fastq_path(wildcards.sample, 2)
-    output: temp(config["pipeline"]["output_dir"] + "/stats/{sample}.R2stats")
-    shell: "set -euo pipefail; python3 workflow/scripts/fastq_gz_stats.py {input} > {output}"
+if STATS_READ_MODE == "paired":
 
-rule cat_raw2_stats:
-    input: expand(config["pipeline"]["output_dir"] + "/stats/{sample}.R2stats", sample=SAMPLES_UNIQUE)
-    output: temp(config["pipeline"]["output_dir"] + "/stats/R2.stats.tmp")
-    shell: "set -euo pipefail; cat {input} > {output}"
+    # -------------------------------------
+    # Raw FASTQ R2
+    # -------------------------------------
+    rule raw2_stats:
+        input: lambda wildcards: get_fastq_path(wildcards.sample, 2)
+        output: temp(config["pipeline"]["output_dir"] + "/stats/{sample}.R2stats")
+        shell: "set -euo pipefail; python3 workflow/scripts/fastq_gz_stats.py {input} > {output}"
 
-rule cat_raw2_stats_add_headers:
-    input: config["pipeline"]["output_dir"] + "/stats/R2.stats.tmp"
-    output: config["pipeline"]["output_dir"] + "/stats/R2.stats"
-    shell: "set -euo pipefail; printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
+    rule cat_raw2_stats:
+        input: expand(config["pipeline"]["output_dir"] + "/stats/{sample}.R2stats", sample=SAMPLES_UNIQUE)
+        output: temp(config["pipeline"]["output_dir"] + "/stats/R2.stats.tmp")
+        shell: "set -euo pipefail; cat {input} > {output}"
 
+    rule cat_raw2_stats_add_headers:
+        input: config["pipeline"]["output_dir"] + "/stats/R2.stats.tmp"
+        output: config["pipeline"]["output_dir"] + "/stats/R2.stats"
+        shell: "set -euo pipefail; printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
 
-# -------------------------------------
-# Paired FASTQ
-# -------------------------------------
-rule paired_stats:
-    input: config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
-    output: temp(config["pipeline"]["output_dir"] + "/stats/{sample}.Pstats")
-    shell: "set -euo pipefail; python3 workflow/scripts/fastq_gz_stats.py {input} > {output}"
+    # -------------------------------------
+    # Paired FASTQ
+    # -------------------------------------
+    rule paired_stats:
+        input: config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
+        output: temp(config["pipeline"]["output_dir"] + "/stats/{sample}.Pstats")
+        shell: "set -euo pipefail; python3 workflow/scripts/fastq_gz_stats.py {input} > {output}"
 
-rule cat_paired_stats:
-    input: expand(config["pipeline"]["output_dir"] + "/stats/{sample}.Pstats", sample=SAMPLES_UNIQUE)
-    output: temp(config["pipeline"]["output_dir"] + "/stats/paired.stats.tmp")
-    shell: "set -euo pipefail; cat {input} > {output}"
+    rule cat_paired_stats:
+        input: expand(config["pipeline"]["output_dir"] + "/stats/{sample}.Pstats", sample=SAMPLES_UNIQUE)
+        output: temp(config["pipeline"]["output_dir"] + "/stats/paired.stats.tmp")
+        shell: "set -euo pipefail; cat {input} > {output}"
 
-rule cat_paired_stats_add_headers:
-    input: config["pipeline"]["output_dir"] + "/stats/paired.stats.tmp"
-    output: config["pipeline"]["output_dir"] + "/stats/paired.stats"
-    shell: "set -euo pipefail; printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
+    rule cat_paired_stats_add_headers:
+        input: config["pipeline"]["output_dir"] + "/stats/paired.stats.tmp"
+        output: config["pipeline"]["output_dir"] + "/stats/paired.stats"
+        shell: "set -euo pipefail; printf 'FileName\tTotSeqs\tMinLength\tMaxLength\tMeanLength\tMedianLength\tModeLength\n' > {output} && cat {input} >> {output}"
 
 
 # -------------------------------------
