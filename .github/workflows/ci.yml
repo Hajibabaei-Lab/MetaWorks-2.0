@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: MetaWorks
+          auto-activate-base: false
+          use-only-tar-bz2: false
+          conda-solver: libmamba
+
+      - name: Cache conda environment
+        uses: actions/cache@v4
+        with:
+          path: /usr/share/miniconda/envs/MetaWorks
+          key: conda-${{ runner.os }}-${{ hashFiles('environment.yml') }}
+          restore-keys: |
+            conda-${{ runner.os }}-
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: PYTHONPATH=$(pwd) pytest -v
