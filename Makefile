@@ -27,7 +27,7 @@ lint-backend:
 	ruff check .
 
 lint-frontend:
-	cd frontend && npx vue-tsc --noEmit 2>/dev/null || true
+	cd frontend && npx vue-tsc --noEmit
 
 lint: lint-backend lint-frontend
 
