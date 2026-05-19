@@ -1,0 +1,28 @@
+# COI Vertebrate Profile
+# For metabarcoding of vertebrates (fish, mammals, birds, etc.)
+# Uses vertebrate mitochondrial genetic code
+
+profile:
+  name: "coi_vertebrate"
+  description: "COI metabarcoding for vertebrates (fish, mammals, birds)"
+  marker: "COI"
+
+# Classification settings for COI
+classification:
+  marker: "COI"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
+
+# Pseudogene filtering optimized for COI vertebrates
+pseudogene_filtering:
+  method: "hmm"
+  grep_type: 1
+  taxon1: "-e Chordata"
+  taxon2: null
+  hmm_profile: "config/hmm/bold.hmm"
+  genetic_code: 2  # Vertebrate mitochondrial
+  orf_start_codon: 2
+  min_orf_length: 30
+  ignore_nested_orfs: true
+  strand: "plus"

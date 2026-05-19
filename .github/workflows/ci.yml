@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          environment-file: environment.yml
+          activate-environment: MetaWorks
+          auto-activate: false
+          use-only-tar-bz2: false
+          conda-solver: libmamba
+
+      - name: Cache conda environment
+        uses: actions/cache@v4
+        with:
+          path: /usr/share/miniconda/envs/MetaWorks
+          key: conda-${{ runner.os }}-${{ hashFiles('environment.yml') }}
+          restore-keys: |
+            conda-${{ runner.os }}-
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: PYTHONPATH=$(pwd) pytest -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx vue-tsc --noEmit
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build

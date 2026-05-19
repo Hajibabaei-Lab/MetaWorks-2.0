@@ -1,0 +1,56 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Development configuration
+pyproject.toml
+setup.cfg
+.pre-commit-config.yaml
+requirements-dev.txt
+
+# Development documentation
+docs/CODE_QUALITY_SETUP.md
+docs/CODE_QUALITY_COMMANDS.md
+
+# Code quality tool caches
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.bandit/
+.tox/
+.pre-commit/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+runtime/
+*.egg-info/
+.eggs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.nuxt/
+frontend/.tsbuildinfo
+frontend/.env.local

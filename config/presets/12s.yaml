@@ -1,0 +1,20 @@
+# 12S Vertebrate Profile
+# For eDNA studies of vertebrates (fish, amphibians, etc.)
+# Uses vertebrate mitochondrial genetic code
+
+profile:
+  name: "12s"
+  description: "12S rRNA metabarcoding for vertebrates (fish, amphibians)"
+  marker: "12S_vertebrate"
+
+# Classification settings for 12S
+classification:
+  marker: "12S_vertebrate"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/12S.properties"
+
+# Pseudogene filtering for 12S vertebrates
+pseudogene_filtering:
+  method: "orf"
+  genetic_code: 2  # Vertebrate mitochondrial

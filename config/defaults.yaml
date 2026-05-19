@@ -1,0 +1,141 @@
+# MetaWorks Pipeline Defaults
+# This file contains the base defaults for all pipeline parameters.
+# Users override these via profiles (marker-specific) and their own config.
+
+# ============================================================================
+# Pipeline Settings
+# ============================================================================
+pipeline:
+  parallel_jobs: 4
+
+# ============================================================================
+# Input Settings (user typically overrides these)
+# ============================================================================
+input:
+  sample_source: "folder"
+  samples_csv: "samples.csv"
+  fastq_dir: "tests/testing_data"
+
+# ============================================================================
+# Module Toggles
+# ============================================================================
+modules:
+  trimming: true
+  denoising: true
+  clustering: false
+  itsx_extraction: false
+  classification: true
+  classification_engine: "rdp"
+  pseudogene_filtering: false
+  stats: true
+  global_esv: false
+  global_otu: false
+
+# ============================================================================
+# Preprocessing Parameters (read-pairing / PE merge)
+# ============================================================================
+preprocessing:
+  quality_score: 13
+  min_overlap: 25
+  max_mismatch: 0.02
+  min_match: 0.90
+
+# ============================================================================
+# Trimming Parameters (Cutadapt)
+# ============================================================================
+trimming:
+  read_mode: "paired"
+  adapter_source: "file"
+  adapters: "tests/adapters_anchored.fasta"
+  adapter_csv: ""
+  primer: ""
+  process_as: "F"
+  min_length: 150
+  quality_cutoff: "20,20"
+  error_rate: 0.1
+  min_adapter_overlap: 3
+  max_n_bases: 3
+  enable_rc: true
+
+# ============================================================================
+# Denoising Parameters (VSEARCH)
+# ============================================================================
+denoising:
+  pool_samples: true
+  min_cluster_size: 8
+  threads: 4
+
+# ============================================================================
+# ITSx Extraction Parameters
+# ============================================================================
+itsx_extraction:
+  its_part: "ITS2"
+  threads: 4
+
+# ============================================================================
+# Clustering Parameters (VSEARCH OTU clustering)
+# ============================================================================
+clustering:
+  cluster_id: 0.97
+  threads: 4
+
+# ============================================================================
+# Classification Parameters
+# ============================================================================
+classification:
+  min_confidence: 0.8
+  rdp:
+    memory_gb: 20
+    use_custom_classifier: true
+    classifier_path: null
+    builtin_classifier: "fungallsu"
+  sintax:
+    db_fasta: null
+    cutoff: null
+    threads: 4
+
+# ============================================================================
+# Pseudogene Filtering Parameters
+# ============================================================================
+pseudogene_filtering:
+  method: "hmm"
+  grep_type: 1
+  taxon1: "-e Arthropoda"
+  taxon2: "-v Chordata"
+  hmm_profile: null
+  genetic_code: 5
+  orf_start_codon: 2
+  min_orf_length: 30
+  ignore_nested_orfs: true
+  strand: "plus"
+
+# ============================================================================
+# Stats Parameters
+# ============================================================================
+stats:
+  per_sample: true
+  combined: true
+
+# ============================================================================
+# Global ESV Parameters
+# ============================================================================
+global_esv:
+  trial_dirs: []
+  threads: 4
+
+# ============================================================================
+# Global OTU Parameters
+# ============================================================================
+global_otu:
+  trial_dirs: []
+  cluster_id: 0.97
+  threads: 4
+
+# ============================================================================
+# Output Parameters
+# ============================================================================
+output:
+  report_type: 1
+  include_intermediate: false
+  compress_output: true
+  html_report: false

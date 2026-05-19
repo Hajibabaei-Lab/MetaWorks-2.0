@@ -1,0 +1,20 @@
+# 12S Fish Profile
+# For eDNA studies targeting fish communities
+# Requires a custom-trained RDP classifier
+
+profile:
+  name: "12s_fish"
+  description: "12S rRNA metabarcoding for fish (eDNA)"
+  marker: "12S_fish"
+
+# Classification settings
+classification:
+  marker: "12S_fish"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/12S_fish.properties"
+
+# Pseudogene filtering not typically used for 12S
+modules:
+  pseudogene_filtering: false

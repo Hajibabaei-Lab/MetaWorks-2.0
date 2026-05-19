@@ -1,0 +1,129 @@
+# MetaWorks Workflow Profile (Layer 1 — auto-loaded)
+# Ships with the repository. Defines resource baselines for all rules.
+# Overridden by environment profiles (slurm/, local/) and user profiles.
+#
+# Auto-loaded by Snakemake when running from the repo root:
+#   snakemake -s workflow/Snakefile ...
+# Because workflow/profiles/default/ is the standard auto-load path.
+
+# Fallback resources for any rule without an explicit set-resources entry.
+default-resources:
+  mem_mb: 2000
+  time_min: 30
+
+# Per-rule thread assignments.
+set-threads:
+  pair_reads: 1
+  trim_linked_adapters: 1
+  gzip_trimmed_fasta: 1
+  concatenate_for_global_analysis: 1
+  edit_fasta_header2: 1
+  compress: 1
+  dereplicate: 1
+  denoise: 1
+  chimera_removal: 1
+  create_ESV_table: 4
+  dereplicate_single: 1
+  merge_sample_ESV_tables: 1
+  taxonomic_assignment: 4
+  hmmscan: 1
+  get_orfs_nt_longest: 1
+  get_longest_orfs: 1
+  get_orfs_nt_hmm: 1
+  get_orfs_aa_hmm: 1
+  consolidate_orfs_hmm: 1
+
+# Per-rule resource assignments (replaces hardcoded values from .smk files).
+set-resources:
+  # --- Trimming ---
+  pair_reads:
+    mem_mb: 2000
+    time_min: 30
+  trim_linked_adapters:
+    mem_mb: 4000
+    time_min: 60
+  gzip_trimmed_fasta:
+    mem_mb: 1000
+    time_min: 10
+
+  # --- Denoising ---
+  concatenate_for_global_analysis:
+    mem_mb: 2000
+    time_min: 10
+  compress:
+    mem_mb: 1000
+    time_min: 5
+  dereplicate:
+    mem_mb: 4000
+    time_min: 30
+  denoise:
+    mem_mb: 4000
+    time_min: 60
+  chimera_removal:
+    mem_mb: 4000
+    time_min: 45
+  create_ESV_table:
+    mem_mb: 6000
+    time_min: 60
+  dereplicate_single:
+    mem_mb: 2000
+    time_min: 20
+  merge_sample_ESV_tables:
+    mem_mb: 2000
+    time_min: 15
+
+  # --- Classification ---
+  taxonomic_assignment:
+    mem_mb: 20000
+    time_min: 240
+
+  # --- Pseudogene filtering ---
+  subset_taxonomy_by_taxon1:
+    mem_mb: 1000
+    time_min: 5
+  subset_taxonomy_by_taxon1_and_taxon2:
+    mem_mb: 1000
+    time_min: 5
+  subset_ESV_sequences_by_taxon:
+    mem_mb: 2000
+    time_min: 10
+  hmmscan:
+    mem_mb: 2000
+    time_min: 45
+  filter_rdp:
+    mem_mb: 2000
+    time_min: 15
+  filter_ESV_table:
+    mem_mb: 2000
+    time_min: 10
+  add_good_orfs_to_taxonomy:
+    mem_mb: 1000
+    time_min: 5
+  add_good_orf_sequences_to_taxonomy:
+    mem_mb: 1000
+    time_min: 10
+
+  # --- ORF finding ---
+  get_orfs_nt_longest:
+    mem_mb: 2000
+    time_min: 30
+  get_longest_orfs:
+    mem_mb: 1000
+    time_min: 10
+  get_orfs_nt_hmm:
+    mem_mb: 2000
+    time_min: 30
+  get_orfs_aa_hmm:
+    mem_mb: 2000
+    time_min: 30
+  consolidate_orfs_hmm:
+    mem_mb: 1000
+    time_min: 10
+
+  # --- Misc ---
+  copy_unfiltered_taxonomy:
+    mem_mb: 1000
+    time_min: 5
+  copy_unfiltered_esv_table:
+    mem_mb: 1000
+    time_min: 5

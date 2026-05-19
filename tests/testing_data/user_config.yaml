@@ -1,0 +1,81 @@
+# Smoke test configuration for MetaWorks 2.0
+#
+# Runs the full pipeline (trim -> denoise -> classify -> results)
+# against the bundled COI test data in tests/testing_data/.
+# Uses the built-in RDP fungal LSU classifier (fungallsu) so no
+# external classifier database is required.
+#
+# This is a fully self-contained config (all 3 layers merged) for testing.
+# For real runs, you only need to provide user overrides — the pipeline
+# merges them with a preset and defaults:
+#   defaults.yaml -> preset.yaml -> user_overrides
+# See docs/CONFIGURATION_GUIDE.md for details.
+#
+# Usage:
+#   snakemake --snakefile workflow/Snakefile --configfile tests/testing_data/user_config.yaml --cores 2
+#
+# Or inside the Docker container:
+#   docker run --rm metaworks snakemake \
+#     --snakefile workflow/Snakefile \
+#     --configfile tests/testing_data/user_config.yaml \
+#     --cores 2
+
+pipeline:
+  output_dir: "output_smoke_test"
+  parallel_jobs: 2
+
+input:
+  sample_source: "folder"
+  fastq_dir: "tests/testing_data"
+
+modules:
+  trimming: true
+  denoising: true
+  clustering: false
+  itsx_extraction: false
+  classification: true
+  classification_engine: "rdp"
+  pseudogene_filtering: false
+  stats: false
+  global_esv: false
+  global_otu: false
+
+preprocessing:
+  quality_score: 13
+  min_overlap: 25
+  max_mismatch: 0.02
+  min_match: 0.90
+
+trimming:
+  read_mode: "paired"
+  adapter_source: "file"
+  adapters: "tests/adapters_anchored.fasta"
+  adapter_csv: ""
+  primer: ""
+  process_as: "F"
+  min_length: 150
+  quality_cutoff: "20,20"
+  error_rate: 0.1
+  min_adapter_overlap: 3
+  max_n_bases: 3
+  enable_rc: true
+
+denoising:
+  pool_samples: true
+  min_cluster_size: 8
+  threads: 2
+
+classification:
+  marker: "COI"
+  min_confidence: 0.8
+  rdp:
+    memory_gb: 20
+    use_custom_classifier: false
+    classifier_path: null
+    builtin_classifier: "fungallsu"
+
+output:
+  report_type: 1
+  include_intermediate: false
+  compress_output: true
+  html_report: false

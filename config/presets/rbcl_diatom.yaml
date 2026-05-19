@@ -1,0 +1,27 @@
+# rbcL Diatom Profile
+# For diatom community analysis using rbcL gene
+# Requires a custom-trained RDP classifier
+# Pseudogene filtering enabled (protein-coding gene)
+
+profile:
+  name: "rbcl_diatom"
+  description: "rbcL metabarcoding for diatoms"
+  marker: "rbcL_diatom"
+
+# Enable pseudogene filtering for this protein-coding marker
+modules:
+  pseudogene_filtering: true
+
+# Classification settings
+classification:
+  marker: "rbcL_diatom"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/rbcL_diatom.properties"
+
+# Pseudogene filtering using longest-ORF method
+pseudogene_filtering:
+  method: "orf"
+  genetic_code: 1
+  # TODO: Set taxon1 for diatoms, e.g. "-e Bacillariophyta"

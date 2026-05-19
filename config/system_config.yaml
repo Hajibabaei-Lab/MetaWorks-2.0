@@ -1,0 +1,140 @@
+# MetaWorks System Configuration
+# DO NOT EDIT - Managed by system administrators
+# This file contains infrastructure and system-wide settings
+
+system:
+  version: "2.0.0"
+  environment: "production"
+  max_concurrent_jobs: 32
+  default_timeout_minutes: 1440
+
+paths:
+  # Runtime directories
+  runtime: "runtime"
+  staging: "runtime/staging"
+  artifacts: "runtime/artifacts"
+  state: "runtime/state"
+
+  # Managed resources
+  classifiers: "runtime/classifiers"
+  adapters: "runtime/adapters"
+
+  # Logs and monitoring
+  logs: "runtime/logs"
+  monitoring: "runtime/monitoring"
+
+  # Temporary files
+  temp: "runtime/temp"
+  cache: "runtime/cache"
+
+runtime:
+  default: "conda"
+  available:
+    - conda
+    - docker
+    - singularity
+
+  container:
+    default_image: "docker://metaworks:latest"
+    cache_dir: "runtime/cache"
+    bind_mounts: []
+
+  conda:
+    env_prefix: "metaworks_"
+    channels:
+      - conda-forge
+      - bioconda
+
+schedulers:
+  available:
+    - slurm
+    - lsf
+    - pbs
+    - local
+  default: "slurm"
+
+  defaults:
+    queue: "normal"
+    account: null
+    walltime: "24:00:00"
+    email: null
+
+  slurm:
+    partition: "normal"
+    qos: "normal"
+
+  lsf:
+    project: null
+
+  pbs:
+    queue: "batch"
+
+resources:
+  default:
+    cores: 32
+    memory_gb: 120
+    disk_gb: 500
+    time_hours: 24
+
+  maximum:
+    cores: 128
+    memory_gb: 500
+    disk_gb: 2000
+    time_hours: 168
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  retention:
+    days: 30
+    max_size_mb: 10000
+
+  rotation:
+    max_mb: 100
+    backup_count: 5
+
+  handlers:
+    console: true
+    file: true
+    syslog: false
+
+security:
+  allow_shared_access: false
+  sanitize_paths: true
+  max_file_size_mb: 1000
+
+  authentication:
+    enabled: false
+    method: "none"
+
+monitoring:
+  enabled: true
+  metrics:
+    - cpu_usage
+    - memory_usage
+    - disk_io
+    - runtime
+    - queue_time
+
+  alerts:
+    email: null
+    webhook: null
+    conditions:
+      - type: "job_failure"
+        threshold: 0
+      - type: "timeout"
+        threshold: 1
+      - type: "disk_space"
+        threshold: 90
+
+maintenance:
+  auto_cleanup:
+    enabled: true
+    interval_hours: 24
+    keep_outputs: true
+
+  backup:
+    enabled: false
+    destination: null
+    schedule: "weekly"

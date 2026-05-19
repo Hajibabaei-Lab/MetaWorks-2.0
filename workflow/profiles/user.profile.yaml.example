@@ -1,0 +1,22 @@
+# MetaWorks User Profile Template (Layer 3)
+# Copy to: ~/.config/snakemake/metaworks/profile.yaml
+# Personal overrides — highest priority after CLI flags.
+# NOT tracked in git.
+#
+# Activate: snakemake --profile metaworks
+# (Snakemake searches ~/.config/snakemake/ for named profiles)
+
+# Personal thread overrides
+set-threads:
+  create_ESV_table: 8
+  taxonomic_assignment: 8
+
+# Personal resource overrides
+set-resources:
+  taxonomic_assignment:
+    mem_mb: 30000
+
+# Uncomment to override SLURM settings
+# default-resources:
+#   slurm_account: "my-account"
+#   slurm_partition: "my-partition"

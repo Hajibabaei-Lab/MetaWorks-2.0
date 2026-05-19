@@ -1,7 +1,6 @@
-# Dockerfile
 # docker build -t metaworks .
 # docker run -it --rm metaworks bash
-# snakemake --jobs 4 --cores 4 --snakefile Snakefile_ESV
+# snakemake --jobs 4 --cores 4
 
 FROM condaforge/mambaforge:latest
 
@@ -26,4 +25,3 @@ WORKDIR /MetaWorks
 COPY . /MetaWorks
 
 CMD ["/bin/bash", "-l"]
-

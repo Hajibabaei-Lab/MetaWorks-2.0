@@ -1,0 +1,27 @@
+# rbcL Eukaryota Profile
+# For broad photosynthetic eukaryote analysis using rbcL gene
+# Requires a custom-trained RDP classifier
+# Pseudogene filtering enabled (protein-coding gene)
+
+profile:
+  name: "rbcl"
+  description: "rbcL metabarcoding for photosynthetic eukaryotes"
+  marker: "rbcL_eukaryota"
+
+# Enable pseudogene filtering for this protein-coding marker
+modules:
+  pseudogene_filtering: true
+
+# Classification settings
+classification:
+  marker: "rbcL_eukaryota"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: null
+    # TODO: Set to your trained classifier path, e.g. "runtime/classifiers/rbcL_eukaryota.properties"
+
+# Pseudogene filtering using longest-ORF method
+pseudogene_filtering:
+  method: "orf"
+  genetic_code: 1
+  # TODO: Set taxon1 for your target group, e.g. "-e Viridiplantae" or "-e Archaeplastida"
