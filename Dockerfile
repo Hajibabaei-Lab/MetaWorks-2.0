@@ -1,13 +1,8 @@
-# Dockerfile
 # docker build -t metaworks .
 # docker run -it --rm metaworks bash
-# snakemake --jobs 4 --cores 4 --snakefile Snakefile_ESV
+# snakemake --jobs 4 --cores 4
 
 FROM condaforge/mambaforge:latest
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY environment.yml /tmp/environment.yml
 RUN mamba env create -f /tmp/environment.yml \
