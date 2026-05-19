@@ -8,10 +8,9 @@ A flexible, web-based control node for managing bioinformatics pipeline runs (ES
 - **Multi-Environment Support**: Run locally, on servers, or on HPC clusters
 - **Flexible Runtimes**: Conda, Docker, and Apptainer (Singularity) support
 - **Workflow Presets**: Pre-configured templates for COI, 16S, and custom analyses
-- **Smart Configuration**: Interactive config editor with validation and help tooltips
+- **Schema-Driven Configuration**: Dynamic config forms generated from the pipeline schema
 - **Real-Time Monitoring**: Live progress tracking, log streaming, and status updates
-- **Asset Management**: Drag-and-drop upload for classifiers and adapters
-- **Scheduler Integration**: Native SLURM support with extensible scheduler architecture
+- **Scheduler Integration**: Pluggable scheduler architecture (SLURM planned)
 
 ## Quick Start
 
@@ -33,12 +32,12 @@ A flexible, web-based control node for managing bioinformatics pipeline runs (ES
 2. **Create conda environment:**
    ```bash
    conda env create -f environment.yml
-   conda activate metaworks
+   conda activate MetaWorks
    ```
 
 3. **Build the UI (one-time setup):**
    ```bash
-   cd ui
+   cd frontend
    npm install
    npm run build
    cd ..
@@ -56,13 +55,6 @@ That's it! The web interface is now ready to use.
 
 ### Using Docker Compose
 
-There are now two deployment shapes:
-
-1. **Legacy single-container backend** using the root-level `docker-compose.yml`
-2. **Recommended split deployment** using `deploy/docker-compose.yml`
-
-For the new frontend/backend split:
-
 ```bash
 cd deploy
 cp .env.example .env
@@ -70,9 +62,6 @@ docker compose up --build
 ```
 
 Access the UI at `http://localhost:8080`.
-This deployment now defaults to the backend container's internal `conda` runtime, so users only
-need Docker/Compose to run the API and both MetaWorks workflows.
-For lab-server deployments, bind the frontend to `127.0.0.1` and reach it through an SSH tunnel.
 
 ## Architecture
 
@@ -80,7 +69,7 @@ For lab-server deployments, bind the frontend to `127.0.0.1` and reach it throug
 
 MetaWorks uses a **control node** architecture:
 
-1. **Web UI**: Standalone Vue 3 application in the separate `metaworks-ui` project
+1. **Web UI**: Vue 3 SPA served from `frontend/`
 2. **API Server**: FastAPI backend managing run lifecycle
 3. **Job Manager**: Handles scheduler integration and job execution
 4. **Runtime Layer**: Supports Conda, Docker, and Apptainer for running pipelines
@@ -114,8 +103,8 @@ FastAPI, so the runner remains independently usable without the web app.
    - Modify fields as needed - help tooltips explain each option
    - Only changed values are sent with the run
 4. **Upload assets** (optional):
-   - Drag-and-drop classifier and adapter files
-   - Reference them in your config
+    - Upload classifier and adapter files via the UI
+    - Reference them in your config
 5. **Submit to scheduler** and monitor progress
 
 ### Monitoring Runs
@@ -131,7 +120,7 @@ For UI development with hot-reload:
 
 ```bash
 # Terminal 1: Vite dev server
-cd ui
+cd frontend
 npm run dev
 
 # Terminal 2: API server
@@ -142,22 +131,16 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 ```
 MetaWorks-2.0/
-├── api/                    # FastAPI backend
-│   ├── main.py             # Application entry point
-│   ├── config.py           # Configuration management
-│   ├── job_manager.py      # Job lifecycle management
-│   ├── schemas.py         # Pydantic models
-│   └── routes/            # API endpoints
-│       ├── runs.py         # Run CRUD operations
-│       ├── configs.py      # Configuration management
-│       └── assets.py      # Asset uploads
-├── ui/                    # Legacy static UI still available for compatibility
-├── deploy/               # Split Docker Compose deployment assets
-├── modules/               # Snakemake pipeline modules
-├── runtime/              # Runtime directories (generated)
-├── config/               # Configuration files
-├── docs/                # Documentation
-└── docker-compose.yml     # Docker deployment
+├── api/                    # FastAPI backend (routes, services, schemas)
+├── config/                 # Pipeline defaults and marker presets
+├── deploy/                 # Docker Compose split deployment
+├── docs/                   # Documentation
+├── frontend/               # Vue 3 + TypeScript SPA
+├── lib/                    # Config management, runtime builders, exceptions
+├── tests/                  # pytest test suite (162 tests)
+├── workflow/               # Snakemake pipeline (rules/, scripts/, profiles/)
+├── Makefile                # Dev, test, lint, build commands
+└── environment.yml         # Conda environment
 ```
 
 ## Deployment Options
@@ -166,8 +149,8 @@ MetaWorks-2.0/
 
 Run on your laptop for testing and development:
 ```bash
-conda activate metaworks
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+ conda activate MetaWorks
+ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Production Server
@@ -209,13 +192,10 @@ GNU General Public License v3.0
 
 ## Citation
 
-If you use MetaWorks in your research, please cite:
-How to cite
-
-If you use this dataflow or any of the provided scripts, please cite the MetaWorks paper:
+If you use MetaWorks in your research, please cite the MetaWorks paper:
 Porter, T. M., & Hajibabaei, M. (2022). MetaWorks: A flexible, scalable bioinformatic pipeline for high-throughput multi-marker biodiversity assessments. PLOS ONE, 17(9), e0274260. doi: 10.1371/journal.pone.0274260
 
-You can also site this repository: Teresita M. Porter. (2020, June 25). MetaWorks: A Multi-Marker Metabarcode Pipeline (Version v1.10.0). Zenodo. http://doi.org/10.5281/zenodo.4741407
+You can also cite this repository: Teresita M. Porter. (2020, June 25). MetaWorks: A Multi-Marker Metabarcode Pipeline (Version v1.10.0). Zenodo. http://doi.org/10.5281/zenodo.4741407
 
 If you use this dataflow for making COI taxonomic assignments, please cite the COI classifier publication:
 Porter, T. M., & Hajibabaei, M. (2018). Automated high throughput animal CO1 metabarcode classification. Scientific Reports, 8, 4226.
@@ -225,7 +205,7 @@ If you use the pseudogene filtering methods, please cite the pseudogene publicat
 If you use the RDP classifier, please cite the publication:
 Wang, Q., Garrity, G. M., Tiedje, J. M., & Cole, J. R. (2007). Naive Bayesian Classifier for Rapid Assignment of rRNA Sequences into the New Bacterial Taxonomy. Applied and Environmental Microbiology, 73(16), 5261–5267. doi:10.1128/AEM.00062-07
 
-Last updated: September 30, 2022
+Last updated: May 2026
 
 ## Acknowledgments
 

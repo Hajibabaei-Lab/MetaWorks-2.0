@@ -2,265 +2,237 @@
 
 ## Overview
 
-This document defines the standards and conventions for creating modules in the MetaWorks pipeline. Following these standards ensures consistency, maintainability, and interoperability between modules.
+This document describes the actual module architecture of the MetaWorks 2.0 pipeline. Modules are Snakemake rule files (`.smk`) organized under `workflow/rules/`, backed by Python helper scripts in `workflow/scripts/`, and governed by a central registry in `lib/config/module_registry.py`.
 
-## Module Structure
+## Pipeline Rules
 
-Each module should be organized in its own directory under `modules/` with the following structure:
+### Directory Structure
+
+Rule files live under `workflow/rules/` in subdirectories organized by pipeline stage:
 
 ```
-modules/
-└── module_name/
-    ├── module.yaml           # Module metadata and configuration
-    ├── main.smk              # Main Snakemake rules
-    ├── README.md             # Module documentation (optional)
-    └── envs/                 # Conda environments (optional)
-        └── environment.yaml
+workflow/rules/
+├── common.smk                          # Shared helpers (included first by Snakefile)
+├── trimming/
+│   └── adapter_trimming.smk
+├── denoising/
+│   └── denoising.smk
+├── clustering/
+│   └── clustering.smk
+├── itsx/
+│   └── itsx_extraction.smk
+├── classification/
+│   ├── classifier.smk
+│   ├── rdp_classifier.smk
+│   └── sintax_classifier.smk
+├── pseudogene/
+│   ├── pseudogene.smk
+│   ├── orfs_hmm.smk
+│   └── orfs_longest.smk
+├── stats/
+│   └── stats.smk
+├── utils/
+│   ├── utils.smk
+│   └── results.smk
+└── global/
+    ├── global_common.smk
+    ├── global_esv.smk
+    └── global_otu.smk
 ```
 
-## Module Metadata (module.yaml)
+There are 17 `.smk` files across these subdirectories. The root `workflow/Snakefile` loads `common.smk` first, then dynamically includes module snakefiles based on the module registry.
 
-Every module must include a `module.yaml` file that describes:
+### Dynamic Loading
 
-- Module identification (name, version, author)
-- Input/output contracts
-- Dependencies
-- Parameters
-- Resource requirements
-- Validation rules
-
-See `modules/module_template.yaml` for the complete schema.
-
-## Snakemake Rules
-
-### Naming Conventions
-
-1. **Rule names**: Use descriptive, lowercase names with underscores
-   ```python
-   rule pair_reads:
-   rule quality_filter:
-   rule detect_samples:
-   ```
-
-2. **File paths**: Use config-based paths, not hardcoded
-   ```python
-   # Good
-   output: "{dir}/processed/{sample}.fastq"
-
-   # Bad
-   output: "COI/processed/{sample}.fastq"
-   ```
-
-3. **Module-specific config**: Access via module config namespace
-   ```python
-   MODULE_CONFIG = config.get("modules", {}).get("preprocessing", {})
-   quality_threshold = MODULE_CONFIG.get("quality", 20)
-   ```
-
-### Input Validation
-
-All modules should validate their inputs:
+The Snakefile (`workflow/Snakefile`) uses the module registry to determine which `.smk` files to include:
 
 ```python
-def validate_inputs():
-    required = ["fastq_dir", "dir"]
-    for req in required:
-        if req not in config:
-            raise ValueError(f"Missing required config: {req}")
+from lib.config.module_registry import (
+    resolve_module_include_paths,
+    resolve_terminal_targets,
+    validate_module_selection,
+)
 
-validate_inputs()
+include: "rules/common.smk"
+
+dependency_errors = validate_module_selection(config)
+
+for module_include_path in resolve_module_include_paths(config, repo_root=str(REPO_ROOT)):
+    include: module_include_path
 ```
 
-### Checkpoints
+Modules are loaded in topological dependency order with cycle detection.
 
-Use Snakemake checkpoints for dynamic workflows:
+## Helper Scripts
 
-```python
-checkpoint detect_samples:
-    """Detect all sample pairs in fastq_dir"""
-    input:
-        fastq_dir = config["fastq_dir"]
-    output:
-        sample_list = "{dir}/metadata/samples.txt"
-    run:
-        # Discovery logic
-        pass
+### `workflow/scripts/`
+
+There are 24 Python scripts handling data processing tasks. All scripts use `argparse` for CLI argument parsing and are invoked from shell directives in `.smk` rules.
+
+Key scripts by function:
+
+| Script | Purpose |
+|--------|---------|
+| `marker_defs.py` | Single source of truth for marker definitions |
+| `formatAdapters_anchored.py` | Format adapter sequences for Cutadapt |
+| `formatAdapters_anchored_filename.py` | Format per-sample adapters from CSV |
+| `filter_rdp.py` | Filter RDP classification results |
+| `filter_rdp_taxonomy.py` | Filter taxonomy by confidence |
+| `parallel_rdp.py` | Parallel RDP classifier wrapper |
+| `add_abundance_to_rdp_out.py` | Merge abundance data with RDP output |
+| `add_seqs_to_tax3.py` | Add sequences to taxonomy output |
+| `add_seqs_to_tax4.py` | Add sequences to taxonomy output (alt format) |
+| `parse_orfs3.py` | Parse ORF predictions (v3 format) |
+| `parse_orfs4.py` | Parse ORF predictions (v4 format) |
+| `sintax_to_rdp_out.py` | Convert SINTAX output to RDP format |
+| `rdp_tsv_to_csv.py` | Convert RDP TSV to CSV |
+| `get_taxon_only.py` | Extract taxon-only column |
+| `grab_seqs_from_results.py` | Extract sequences from results file |
+| `filter_ESV_table.py` | Filter ESV abundance table |
+| `merge_esv_tables.py` | Merge multiple ESV tables |
+| `map_global_esvs_to_results.py` | Map global ESVs to per-trial results |
+| `map_global_otus_to_results.py` | Map global OTUs to per-trial results |
+| `map_global_to_results.py` | Map global identifiers to results |
+| `rename_fasta_gzip.py` | Rename and gzip FASTA files |
+| `fastq_gz_stats.py` | Compute statistics for FASTQ files |
+| `fasta_gz_stats.py` | Compute statistics for FASTA files |
+| `rc.py` | Reverse-complement sequences |
+
+### `marker_defs.py` — Single Source of Truth
+
+`workflow/scripts/marker_defs.py` defines marker properties (taxonomy regions, primer sequences, expected lengths) for the 13 supported markers. All pipeline components that need marker information consult this file.
+
+## Module Registry
+
+### `lib/config/module_registry.py`
+
+The `MODULE_REGISTRY` dictionary maps 11 module names to their configuration entries. Each entry specifies:
+
+- `module` — name, version, description, author, `enabled_by_default`
+- `directory` — subdirectory under `workflow/rules/`
+- `snakefile` — path to the `.smk` file (relative to repo root)
+- `config_section` — top-level config key for module parameters
+- `activation` — how the module is activated (see below)
+- `depends_on` — list of module names that must also be enabled
+- `terminal_outputs` — output file patterns used to build `rule all` targets
+- `resources` — thread/memory/time defaults
+- `validation` — parameter constraints (type, range, allowed values)
+
+### Activation Modes
+
+| Mode | Behavior | Modules |
+|------|----------|---------|
+| `always` | Always included regardless of config | `shared_utils` |
+| `enabled` | Included when `modules.<name>: true` | `trimming`, `denoising`, `clustering`, `itsx_extraction`, `classification`, `stats`, `global_esv`, `global_otu` |
+| `classification_stage` | Included when both denoising and classification are enabled | `utils`, `pseudogene_filtering` |
+
+The `global_esv` and `global_otu` modules have `"stage": "post_classification"` in their registry entries, but their activation mode is `enabled` — they are activated by the `modules.global_esv` / `modules.global_otu` toggles.
+
+### Key Functions
+
+- **`is_module_enabled(config, module_name)`** — Single source of truth for checking module state. Used by the Snakefile, `ConfigManager`, and `schema_builder`.
+- **`clustering_enabled(config)`** — Returns whether OTU clustering is active.
+- **`should_include_module(config, module_name)`** — Resolves activation mode against config.
+- **`validate_module_selection(config)`** — Validates dependency constraints.
+- **`resolve_module_include_paths(config, repo_root)`** — Returns ordered list of `.smk` paths to include.
+- **`resolve_terminal_targets(config, samples)`** — Builds the final target list for `rule all`.
+
+## Config System
+
+### Defaults — `config/defaults.yaml`
+
+Base defaults for all pipeline parameters. Module toggles live under the `modules:` key:
+
+```yaml
+modules:
+  trimming: true
+  denoising: true
+  clustering: false
+  itsx_extraction: false
+  classification: true
+  classification_engine: "rdp"
+  pseudogene_filtering: false
+  stats: true
+  global_esv: false
+  global_otu: false
 ```
 
-### Logging and Benchmarking
+Each enabled module has a corresponding top-level section with its parameters (e.g., `trimming:`, `denoising:`, `classification:`).
 
-Always include log and benchmark directives:
+### Presets — `config/presets/`
+
+Marker-specific override files (14 presets) that layer on top of `defaults.yaml`. Users select a preset to configure primer sequences, marker type, and classifier settings for a specific barcode gene.
+
+### Config Flow
+
+```
+CLI:  user_config.yaml → Snakefile (loads directly)
+API:  defaults.yaml → preset.yaml → user_overrides → ConfigManager.merge() → ResolvedConfig (frozen)
+```
+
+## Common Helpers — `workflow/rules/common.smk`
+
+Included first by the Snakefile. Provides shared functions used across all modules:
+
+| Function | Purpose |
+|----------|---------|
+| `get_module_config(config, module_name)` | Get parameter dict for a module (e.g., `config["trimming"]`) |
+| `get_output_dir(config)` | Resolve pipeline output directory |
+| `get_sequences_input(config)` | Resolve input FASTA — routes to centroids if clustering, ITSx output if active, else denoised |
+| `get_abundance_table(config)` | Resolve abundance table — `OTU.table` if clustering, else `ESV.table.tmp` |
+| `get_classification_engine(config)` | Resolve classifier backend (`rdp` or `sintax`) |
+
+## Snakemake Rule Conventions
+
+### Naming
+
+Rule names use lowercase with underscores:
 
 ```python
-rule process_sample:
-    input: ...
-    output: ...
-    log: "{dir}/logs/processing/{sample}.log"
-    benchmark: "{dir}/benchmarks/processing/{sample}.txt"
-    shell: """
-        command ... 2>&1 | tee {log}
+rule pair_reads:
+rule quality_filter:
+rule vsearch_denoise:
+```
+
+### Shell Blocks
+
+All shell commands follow these patterns:
+
+```python
+shell:
+    """
+    set -euo pipefail
+    some_command {input} > {output}
     """
 ```
 
-## Python Library Integration
+- Always start with `set -euo pipefail`
+- Use `>` for output (write-only), never `>>` (append)
+- Properly quote Snakemake wildcards and config values
+- Every rule includes a `log:` directive
 
-Modules should use the `lib/` Python package for complex logic:
+### Log Directives
 
-```python
-# In Snakemake rule
-shell: """
-    python -m lib.preprocessing.sequence_stats {input} > {output.stats}
-"""
-
-# Or in run block
-run:
-    from lib.preprocessing import SequenceStats
-    stats = SequenceStats(input[0])
-    result = stats.calculate()
-```
-
-### Creating Library Modules
-
-1. Place in appropriate subpackage (`lib/preprocessing/`, `lib/taxonomy/`, etc.)
-2. Include docstrings for all classes and functions
-3. Provide CLI interface via `if __name__ == "__main__"`
-4. Add unit tests
-
-Example structure:
+Every rule must include a log directive:
 
 ```python
-"""Module description"""
-
-from pathlib import Path
-from typing import Dict, Union
-import sys
-
-class MyProcessor:
-    """Processor class with clear purpose"""
-
-    def __init__(self, filepath: Union[str, Path]):
-        self.filepath = Path(filepath)
-
-    def process(self) -> Dict:
-        """Process data and return results"""
-        pass
-
-def main():
-    """CLI interface"""
-    if len(sys.argv) < 2:
-        sys.exit("Usage: ...")
-
-    # Implementation
-    pass
-
-if __name__ == "__main__":
-    main()
+rule example:
+    input: ...
+    output: ...
+    log: "{dir}/logs/module_name/{sample}.log"
+    shell: "set -euo pipefail\ncommand {input} > {output} 2> {log}"
 ```
 
-## Module Independence
+## Adding a New Module
 
-Modules should be:
-
-1. **Self-contained**: Don't depend on specific directory structures outside their control
-2. **Configurable**: Accept parameters via config, not hardcoded
-3. **Testable**: Can be run independently with test data
-4. **Documented**: Clear inputs, outputs, and parameters
-
-## Workflow Composition
-
-Modules are composed into workflows:
-
-```python
-# workflows/esv_basic.smk
-
-module preprocessing:
-    snakefile: "../modules/preprocessing/main.smk"
-    config: config
-
-module trimming:
-    snakefile: "../modules/trimming/main.smk"
-    config: config
-
-# Use rules from modules
-use rule * from preprocessing
-use rule * from trimming
-```
-
-## Error Handling
-
-1. **Validate inputs** before processing
-2. **Use informative error messages** that guide users to solutions
-3. **Handle edge cases** gracefully
-4. **Clean up** temporary files on failure
-
-```python
-try:
-    result = process_data(input_file)
-except FileNotFoundError as e:
-    raise FileNotFoundError(
-        f"Input file not found: {input_file}. "
-        f"Please check the 'fastq_dir' configuration."
-    ) from e
-```
-
-## Testing
-
-Each module should have:
-
-1. **Unit tests** for Python code in `lib/`
-2. **Integration tests** with sample data
-3. **Documented test cases** in module README
-
-Example test structure:
-
-```
-tests/
-├── unit/
-│   └── test_sequence_stats.py
-├── integration/
-│   └── test_preprocessing_module.py
-└── data/
-    └── sample.fastq.gz
-```
-
-## Documentation
-
-Module README should include:
-
-1. **Purpose**: What the module does
-2. **Requirements**: Dependencies and prerequisites
-3. **Configuration**: Required and optional parameters
-4. **Examples**: Usage examples
-5. **Outputs**: Description of output files
-
-## Version Control
-
-1. Follow semantic versioning (MAJOR.MINOR.PATCH)
-2. Update version in `module.yaml` when making changes
-3. Document breaking changes in module README
-
-## Best Practices
-
-1. **Use native Snakemake features** (checkpoints, temp files, protected files)
-2. **Minimize external dependencies** - prefer stdlib when possible
-3. **Make it API-friendly** - modules should be callable programmatically
-4. **Think about resumability** - use checkpoints for long-running steps
-5. **Resource awareness** - specify appropriate threads/memory requirements
-6. **Logging is crucial** - capture all output for debugging
-
-## Migration from Legacy Code
-
-When refactoring existing code into modules:
-
-1. Identify logical boundaries (preprocessing, classification, etc.)
-2. Extract hardcoded values to config
-3. Consolidate duplicate functionality
-4. Add input validation
-5. Improve error messages
-6. Add logging and benchmarking
-7. Create unit tests
-8. Document the module
-
-## Example: Complete Module
-
-See `modules/preprocessing/` for a complete example module following all standards.
+1. Create `.smk` file(s) in the appropriate `workflow/rules/` subdirectory
+2. Add a registry entry in `lib/config/module_registry.py` with:
+   - Module metadata (`module` dict)
+   - `directory`, `snakefile`, `config_section`
+   - `activation` mode (`always`, `enabled`, or `classification_stage`)
+   - `depends_on` list
+   - `terminal_outputs` patterns
+   - `validation` constraints for parameters
+3. Add config defaults in `config/defaults.yaml` under the module name
+4. Add a toggle under `modules:` in `config/defaults.yaml`
+5. Validate with `make test-backend`

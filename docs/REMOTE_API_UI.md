@@ -1,6 +1,6 @@
 # Control Node API and Web UI (single node)
 
-This document captures the single-node control stack for MetaWorks: a FastAPI backend plus a static web UI that can launch Snakemake-based ESV/OTU runs using host conda, Docker, or Apptainer without changing the UI.
+This document captures the single-node control stack for MetaWorks: a FastAPI backend plus a Vue 3 SPA frontend that can launch Snakemake-based ESV/OTU runs using host conda, Docker, or Apptainer without changing the UI.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ This document captures the single-node control stack for MetaWorks: a FastAPI ba
   - Endpoints for run submission/status/log tail/artifact packaging/cancel.
   - Config templating (`/configs/defaults/{workflow}`, `/configs/render`).
   - Managed assets for classifiers/adapters (upload/list/delete).
-  - Serves the static UI from `ui/`.
+  - Serves the API at `/api/*`; the Vue 3 SPA frontend is served separately by Caddy (split deployment) or during dev by the Vite dev server.
   - Tracks run metadata, PIDs/return codes, and log paths in `runtime/state/runs.json`.
 - **Runner** (single node, pluggable): builds and launches Snakemake commands based on `runtime` (conda|docker|apptainer). Uses local `subprocess.Popen` today; can be swapped for a scheduler submitter later without UI changes.
 - **State + data layout** (host-visible so each runtime sees the same files):
@@ -39,17 +39,19 @@ Run and data paths are automatically bound (`<run_dir>:<run_dir>`, `<input_dir>:
 
 ## Web UI
 
-- Static HTML/JS/CSS in `ui/` served by FastAPI.
+- Vue 3 + TypeScript SPA in `frontend/`, built with Vite.
+- In the split deployment, Caddy serves the frontend and proxies `/api/*` to the FastAPI backend.
+- In development, the Vite dev server runs on port 5173 and proxies API requests to port 8000.
 - Adds a runtime selector (conda|docker|apptainer) plus optional fields for container image URI, bind paths, and cache/prefix; shown only for containerized runtimes.
-- Status/log/artifact polling is unchanged and works against the runtime-aware status/log endpoints.
+- Status/log/artifact polling works against the runtime-aware status/log endpoints.
 - Upload/manage classifier and adapter assets from the browser.
 
 ### Using uploaded adapters and classifiers
 
-- Uploaded adapters land at `runtime/adapters/<filename>`; classifiers land at `runtime/classifiers/<filename>` on the host. Because the repo is auto-bound to `/workspace` for container runs, these become `/workspace/runtime/adapters/<filename>` and `/workspace/runtime/classifiers/<filename>` inside the container.
+- Uploaded adapters land at `runtime/adapters/<filename>`; classifiers land at `runtime/classifiers/<filename>` on the host. Because the repo is auto-bound to `/MetaWorks` for container runs, these become `/MetaWorks/runtime/adapters/<filename>` and `/MetaWorks/runtime/classifiers/<filename>` inside the container.
 - In the Config cards:
-  - **Adapters**: set `CUTADAPT.fasta` to `/workspace/runtime/adapters/<your_adapter.fasta>` (or another bound path if you stored it elsewhere and added a bind).
-  - **Classifiers**: set `RDP.custom` to `yes` and `RDP.t` to `/workspace/runtime/classifiers/<your_classifier.properties>` (or your bound path).
+  - **Adapters**: set `trimming.adapters` to `/MetaWorks/runtime/adapters/<your_adapter.fasta>` (or another bound path if you stored it elsewhere and added a bind).
+  - **Classifiers**: set `classification.rdp.use_custom_classifier` to `yes` and `classification.rdp.classifier_path` to `/MetaWorks/runtime/classifiers/<your_classifier.properties>` (or your bound path).
 - If you upload outside the repo, add a bind in “Bind paths” (e.g., `/data/classifiers:/data/classifiers`) and reference the inside-container path you chose.
 
 ## Running on a single node
@@ -67,13 +69,6 @@ Run and data paths are automatically bound (`<run_dir>:<run_dir>`, `<input_dir>:
    - `METAWORKS_DEFAULT_RUNTIME=apptainer` to favor Apptainer without editing the UI.
    - `METAWORKS_ALLOWED_RUNTIMES=docker,apptainer` to constrain web-submitted runtime modes.
    - `METAWORKS_RETENTION_POLICY=until_download` (`until_download|immediate|manual`) to control run file cleanup behavior.
-
-## Future two-container deployment (plan)
-
-- Split into **backend** (FastAPI + runner) and **frontend** (static UI via nginx/Caddy).
-- Bind-mount into the backend container: `runtime/runs`, `runtime/artifacts`, `runtime/classifiers`, `runtime/adapters`, input data directories, and the Apptainer binary plus image (for `runtime=apptainer`).
-- Expose backend on port `8000`; frontend serves static files and proxies to backend.
-- Keep the same API/UI shape so local PIDs can later be replaced with scheduler IDs without changing the frontend.
 
 ## Future-proofing notes
 
@@ -96,8 +91,8 @@ Use this path when you already have the MetaWorks image locally and want Snakema
    ```
 
 3. Prepare paths (absolute):
-   - Repo root: `/abs/path/to/MetaWorks-2.0` (mounted to `/workspace` inside the container).
-   - Input data: e.g., `/abs/path/to/MetaWorks-2.0/testing/testing_data` (test FASTQs).
+   - Repo root: `/abs/path/to/MetaWorks-2.0` (mounted to `/MetaWorks` inside the container).
+   - Input data: e.g., `/abs/path/to/MetaWorks-2.0/tests/testing_data` (test FASTQs).
    - Optional adapters/classifiers: under `runtime/adapters` / `runtime/classifiers` or elsewhere (bind if outside the repo).
    - Cache/prefix (optional): `/abs/path/to/MetaWorks-2.0/runtime/cache`.
 
@@ -107,15 +102,15 @@ Use this path when you already have the MetaWorks image locally and want Snakema
    - Container image URI: `metaworks:latest` (or your tag).
    - Bind paths (one per line, absolute host paths). Example on Windows:
      ```
-     D:/MetaWorks-2.0:/workspace
-     ```
-     (The repo is auto-mounted to `/workspace`; the bundled test data lives at `/workspace/testing/testing_data` and works without extra binds. Add more binds only if your data/classifiers live outside the repo.)
+      D:/MetaWorks-2.0:/MetaWorks
+      ```
+      (The repo is auto-mounted to `/MetaWorks`; the bundled test data lives at `/MetaWorks/tests/testing_data` and works without extra binds. Add more binds only if your data/classifiers live outside the repo.)
    - Cache/prefix: `/abs/path/to/MetaWorks-2.0/runtime/cache` (or leave blank to use default).
-   - Input directory: `/workspace/testing/testing_data` (bundled test data).
+   - Input directory: `/MetaWorks/tests/testing_data` (bundled test data).
    - Samples CSV: leave blank for the bundled test.
    - Overrides JSON: optional; for the test adapters you can set
      ```json
-     {"CUTADAPT": {"fasta": "/workspace/testing/adapters_anchored.fasta"}}
+      {"trimming": {"adapters": "/MetaWorks/tests/adapters_anchored.fasta"}}
      ```
    - Leave cores/mem default; dry-run off.
 
@@ -125,50 +120,6 @@ Use this path when you already have the MetaWorks image locally and want Snakema
    - Package artifacts when done → `runtime/artifacts/<run_id>.tar.gz`.
 
 Notes
-- The backend auto-binds the repo to `/workspace` inside the container so `Snakefile`/configs resolve. Any paths outside the repo must be bound explicitly and referenced by their inside-container path.
+- The backend auto-binds the repo to `/MetaWorks` inside the container so `Snakefile`/configs resolve. Any paths outside the repo must be bound explicitly and referenced by their inside-container path.
 - Apptainer runtime follows the same pattern but uses `apptainer exec ... snakemake ...` with `-B` binds and the cache/prefix for pulls.
 - Conda runtime runs Snakemake on the host if you prefer that mode.
-
-## Research Community Delivery Plan
-
-Goal: provide a simple web-first tool for researchers with minimal setup, containerized execution, and clear data-retention behavior.
-
-### Phase 1: Community-ready baseline
-
-- Keep the web app as the primary interface (submit, monitor, download).
-- Restrict web-submitted runs to containerized runtimes (`docker` and `apptainer`).
-- Provide a one-click bundled test run so new users can validate setup before using their own data.
-- Add preflight validation on submit (input path exists, readable FASTQs, classifier/adapters checks).
-
-### Phase 2: Ephemeral-by-default data handling
-
-- Keep run outputs/logs only until a user explicitly downloads artifacts.
-- Trigger automatic cleanup of run files after successful artifact download.
-- Keep lightweight run metadata for status/audit unless strict stateless mode is enabled.
-- Show explicit UI messaging: "Unsaved runs are deleted after download or retention expiry."
-
-### Phase 3: Reproducibility and provenance
-
-- Include a manifest in every artifact archive:
-  - workflow + overrides
-  - container image tag/digest
-  - code revision (git SHA)
-  - execution timestamp and runtime details
-- Add "rerun from manifest" support to reproduce prior analyses.
-
-### Phase 4: Deployment and operations
-
-- Provide a standard Docker Compose deployment:
-  - `frontend` (static UI + reverse proxy)
-  - `backend` (FastAPI + job manager)
-  - optional ephemeral volume profile for runtime data
-- Add configurable retention policy (immediate, TTL, manual cleanup).
-- Add auth-ready deployment guidance (OIDC/reverse-proxy auth) for shared institutional hosting.
-- Add metrics and health checks for administrators (queue depth, run durations, failures).
-
-### Phase 5: Community distribution package
-
-- Publish a "5-minute quickstart" with copy-paste commands.
-- Ship a small sample dataset + expected output checks.
-- Provide a troubleshooting matrix for common runtime/setup failures.
-- Maintain versioned release notes describing workflow/runtime behavior changes.

@@ -31,9 +31,6 @@ docker compose up --build
 
 Open `http://localhost:8080`.
 
-If the standalone UI repo is not checked out as `../../metaworks-ui`, update
-`METAWORKS_UI_CONTEXT` in `.env`.
-
 ## SSH-Only Server Access
 
 For a lab server, the safest default is to keep the web UI bound to server-localhost only:

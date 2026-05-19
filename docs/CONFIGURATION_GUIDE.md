@@ -1,6 +1,6 @@
 # MetaWorks Configuration Guide
 
-This guide explains how to use the profile-based configuration system in MetaWorks v2.0.
+This guide explains how to configure MetaWorks 2.0 pipeline runs using the profile-based configuration system.
 
 ---
 
@@ -11,8 +11,10 @@ This guide explains how to use the profile-based configuration system in MetaWor
 3. [Profile System](#profile-system)
 4. [Creating Your Config](#creating-your-config)
 5. [Configuration Sections](#configuration-sections)
-6. [Common Use Cases](#common-use-cases)
-7. [Troubleshooting](#troubleshooting)
+6. [Pipeline Data Flow](#pipeline-data-flow)
+7. [Common Use Cases](#common-use-cases)
+8. [Troubleshooting](#troubleshooting)
+9. [Programmatic Configuration](#programmatic-configuration)
 
 ---
 
@@ -21,12 +23,11 @@ This guide explains how to use the profile-based configuration system in MetaWor
 ### Option A: Use a Profile (Recommended)
 
 ```python
-from lib.config import ConfigManager
+from lib.config.config_manager import ConfigManager
 
-# Load with a profile - simplest approach!
 config = ConfigManager.load(
-    profile="coi",           # Marker-specific profile
-    workflow="esv",          # "esv" or "otu"
+    profile="coi",
+    workflow="esv",
     repo_root="/path/to/MetaWorks-2.0"
 )
 ```
@@ -41,14 +42,12 @@ config = ConfigManager.load(
 ### Option C: CLI with Config File
 
 ```bash
-# Create minimal user config
 cat > my_run.yaml << EOF
 input:
   fastq_dir: "tests/testing_data"
   sample_source: "folder"
 EOF
 
-# Run with profile
 snakemake --configfile config/defaults.yaml config/presets/coi.yaml my_run.yaml
 ```
 
@@ -56,38 +55,31 @@ snakemake --configfile config/defaults.yaml config/presets/coi.yaml my_run.yaml
 
 ## Configuration Overview
 
-The configuration system uses four layers, merged in order:
+The configuration system uses three layers, merged in order:
 
 ```
 ┌─────────────────────────────────────┐
 │   User Overrides                   │  ← Your minimal config
-│   Just what you want to change     │
 └─────────────────────────────────────┘
               ↓ merges with
 ┌─────────────────────────────────────┐
 │   Profile Configuration            │  ← Marker-specific settings
-│   COI, 16S, ITS, 12S presets       │
 └─────────────────────────────────────┘
               ↓ merges with
 ┌─────────────────────────────────────┐
-│   Pipeline Defaults                │  ← Base parameter defaults
-│   config/defaults.yaml             │
-└─────────────────────────────────────┘
-              ↓ merges with
-┌─────────────────────────────────────┐
-│   System & Module Configs          │  ← Infrastructure & modules
-│   System settings, validation      │
+│   Pipeline Defaults                │  ← config/defaults.yaml
 └─────────────────────────────────────┘
 ```
+
+Later layers override earlier ones. Most users only need to provide input data and choose a profile.
 
 ### Layer Responsibilities
 
 | Layer | File(s) | Purpose | Edit? |
 |--------|---------|---------|-------|
-| **User Overrides** | Your YAML or API request | Your specific choices | ✅ Yes |
+| **User Overrides** | Your YAML or API request | Your specific choices | Yes |
 | **Profile** | `config/presets/*.yaml` | Marker-specific presets | Rarely |
 | **Defaults** | `config/defaults.yaml` | Pipeline-wide defaults | Rarely |
-| **System/Modules** | `config/system_config.yaml`, `modules/*/module_config.yaml` | Infrastructure | No |
 
 ---
 
@@ -97,21 +89,37 @@ Profiles are pre-configured settings for common marker genes. They dramatically 
 
 ### Available Profiles
 
-| Profile | Description | Marker | Use Case |
-|---------|-------------|--------|----------|
-| `coi` | COI arthropods | COI | Insect/crustacean metabarcoding |
-| `coi_vertebrate` | COI vertebrates | COI | Fish/bird/mammal metabarcoding |
-| `16s` | 16S rRNA | 16S | Bacterial/archaeal microbiome |
-| `its` | ITS fungi | ITS_fungi | Fungal community analysis |
-| `12s` | 12S vertebrates | 12S_vertebrate | eDNA for vertebrates |
+#### Ready-to-use (validated with test data)
+
+| Profile | Description | Marker |
+|---------|-------------|--------|
+| `coi` | COI arthropods | COI |
+| `coi_vertebrate` | COI vertebrates | COI |
+| `16s` | 16S rRNA bacteria/archaea | 16S |
+| `28s` | 28S rRNA | 28S |
+| `its` | ITS fungi | ITS |
+| `12s` | 12S vertebrates | 12S |
+
+#### Starter templates
+
+| Profile | Description | Marker |
+|---------|-------------|--------|
+| `12s_fish` | 12S fish eDNA | 12S |
+| `16s_vertebrate` | 16S vertebrates | 16S |
+| `18s` | 18S eukaryotes | 18S |
+| `18s_diatom` | 18S diatoms | 18S |
+| `its_plants` | ITS plants | ITS |
+| `rbcl` | rbcL (general) | rbcL |
+| `rbcl_diatom` | rbcL diatoms | rbcL |
+| `rbcl_landplant` | rbcL land plants | rbcL |
 
 ### Profile Contents
 
 Each profile contains:
 
-1. **Marker information** - The genetic marker type
-2. **Classification settings** - Pre-configured classifier options
-3. **Pseudogene filtering** - Appropriate genetic code and HMM settings
+1. **Marker information** — The genetic marker type
+2. **Classification settings** — Pre-configured classifier options
+3. **Pseudogene filtering** — Appropriate genetic code and HMM settings
 
 Example: `config/presets/coi.yaml`:
 
@@ -139,7 +147,7 @@ pseudogene_filtering:
 
 #### Web UI
 
-The Web UI now includes a profile selector. Simply:
+The Web UI includes a profile selector. Simply:
 1. Choose your profile from the dropdown
 2. Fill in input directory and run name
 3. Submit!
@@ -147,30 +155,29 @@ The Web UI now includes a profile selector. Simply:
 #### API
 
 ```python
-from lib.config import ConfigManager
+from lib.config.config_manager import ConfigManager
 
-# Load with profile
 config = ConfigManager.load(
     profile="coi",
     workflow="esv",
     repo_root="/path/to/MetaWorks-2.0"
 )
+```
 
-# Add your overrides
-config.user_config = {
-    "input": {
-        "fastq_dir": "/data/my_samples"
-    }
-}
+For API/UI use with dictionary overrides:
 
-# Merge and export
-config.merge(workflow="esv")
+```python
+config = ConfigManager.load_from_dict(
+    profile="coi",
+    workflow="esv",
+    user_overrides={"input": {"fastq_dir": "/data/my_samples"}},
+    repo_root="/path/to/MetaWorks-2.0"
+)
 ```
 
 #### CLI
 
 ```bash
-# Layer configs: defaults → profile → your_config
 snakemake \
   --configfile config/defaults.yaml \
   --configfile config/presets/coi.yaml \
@@ -209,25 +216,7 @@ config = ConfigManager.load(profile="my_custom", workflow="esv")
 
 ## Creating Your Config
 
-### Step 1: Pipeline Selection
-
-Tell MetaWorks what to run and where to put results:
-
-```yaml
-pipeline:
-  name: "esv"              # or "otu"
-  output_dir: "COI_results"   # Your output directory
-  parallel_jobs: 4            # Samples to process in parallel
-```
-
-**Important:**
-- `name`: Must be "esv" or "otu"
-- `output_dir`: Use short, simple names (no spaces)
-- `parallel_jobs`: Depends on your resources (1-32 recommended)
-
----
-
-### Step 2: Specify Input Data
+### Step 1: Input Data
 
 Tell MetaWorks where your data is:
 
@@ -238,76 +227,89 @@ input:
   fastq_dir: "data/reads"       # Directory with FASTQ files
 ```
 
-**Sample Source Options:**
-
 | Option | When to Use | Description |
 |--------|--------------|-------------|
 | `folder` | Most cases | Auto-detects all FASTQ files in directory |
 | `csv` | Special cases | Use `samples.csv` to specify exactly which files |
 
----
+### Step 2: Choose Modules
 
-### Step 3: Choose Modules
-
-Enable or disable pipeline modules:
+Enable or disable pipeline modules using the 10 toggles from `config/defaults.yaml`:
 
 ```yaml
 modules:
-  preprocessing: true              # Quality filtering & read merging
-  trimming: true                   # Adapter removal
-  denoising: true                 # ESV generation
-  classification: true              # Taxonomic assignment
-  pseudogene_filtering: false        # Pseudogene removal (optional)
-  stats: true                     # Statistics & reports
+  trimming: true
+  denoising: true
+  clustering: false
+  itsx_extraction: false
+  classification: true
+  classification_engine: "rdp"
+  pseudogene_filtering: false
+  stats: true
+  global_esv: false
+  global_otu: false
 ```
 
-**Module Order:**
-Modules run in this order:
-1. Preprocessing → Trimming → Denoising → Classification
-2. Pseudogene filtering (optional) → Stats → Utils
+Module data flow:
+1. Trimming → Denoising → Classification → Stats
+2. Optional paths: Clustering (OTU mode), ITSx extraction, Pseudogene filtering
+3. Post-classification: Global ESV, Global OTU (cross-trial analyses)
 
----
-
-### Step 4: Configure Module Parameters
-
-Each module has optional parameters you can override:
-
-#### Preprocessing
+### Step 3: Configure Pipeline Settings
 
 ```yaml
-preprocessing:
-  quality_score: 13        # Phred score cutoff (0-40)
-  min_overlap: 25          # Minimum read overlap (10-100 bp)
-  max_mismatch: 0.02       # Max fraction mismatches (0.0-0.5)
-  min_match: 0.90         # Min fraction matching (0.0-1.0)
+pipeline:
+  parallel_jobs: 4
+  output_dir: "COI_results"
 ```
 
-**When to Adjust:**
-- Different sequencing platforms (Illumina, IonTorrent, etc.)
-- Lower quality data → decrease `quality_score`
-- Shorter amplicons → decrease `min_overlap`
+- `parallel_jobs`: Number of samples processed in parallel (depends on your resources, 1–32 recommended).
+- `output_dir`: Optional override for the output directory. Defaults to `{WORKFLOW}_results` (e.g., `ESV_results` or `OTU_results`) if not specified.
 
----
+### Step 4: Configure Module Parameters
 
 #### Trimming
 
 ```yaml
 trimming:
-  adapters: "adapters/COI.fasta"   # Adapter sequences file
-  min_length: 150                  # Minimum sequence length
-  quality_cutoff: "20,20"          # Quality at 5' and 3' ends
-  error_rate: 0.1                   # Adapter matching error rate
-  enable_rc: true                    # Enable reverse complement
+  read_mode: "paired"
+  adapter_source: "file"
+  adapters: "tests/adapters_anchored.fasta"
+  adapter_csv: ""
+  primer: ""
+  process_as: "F"
+  min_length: 150
+  quality_cutoff: "20,20"
+  error_rate: 0.1
+  min_adapter_overlap: 3
+  max_n_bases: 3
+  enable_rc: true
 ```
 
-**Required:**
-- `adapters`: Must point to existing FASTA file
+For read-pairing parameters (quality score, overlap, mismatch, match), configure under `preprocessing:` — see below.
 
-**Common Issues:**
-- **No reads after trimming** → Check `adapters` path matches your primers
-- **Too few reads** → Decrease `quality_cutoff` or `min_length`
+#### Preprocessing (read-pairing)
 
----
+```yaml
+preprocessing:
+  quality_score: 13
+  min_overlap: 25
+  max_mismatch: 0.02
+  min_match: 0.90
+```
+
+This is **not** a module toggle — it is a parameter section for read-pairing quality filtering, consumed by the trimming module's adapter_trimming rule.
+
+| Parameter | Range | Effect |
+|-----------|-------|--------|
+| `quality_score` | 0–40 | Phred score cutoff for read merging |
+| `min_overlap` | 10–100 bp | Minimum read overlap for pairing |
+| `max_mismatch` | 0.0–0.5 | Maximum fraction mismatches in overlap |
+| `min_match` | 0.0–1.0 | Minimum fraction matching in overlap |
+
+**When to adjust:**
+- Lower quality data → decrease `quality_score`
+- Shorter amplicons → decrease `min_overlap`
 
 #### Denoising
 
@@ -315,118 +317,105 @@ trimming:
 denoising:
   pool_samples: true       # Pool all samples (better for rare ESVs)
   min_cluster_size: 8      # Minimum reads per ESV cluster
-  threads: 4              # Number of threads
+  threads: 4               # Number of threads
 ```
-
-**Pooling Strategy:**
 
 | Strategy | When to Use | Pros | Cons |
 |----------|--------------|-------|-------|
 | `pool_samples: true` | <100 samples, similar libraries | Better rare ESV detection | Slower |
 | `pool_samples: false` | >100 samples, diverse libraries | Faster | May miss rare ESVs |
 
----
+#### ITSx Extraction
+
+```yaml
+itsx_extraction:
+  its_part: "ITS2"
+  threads: 4
+```
+
+Enable with `modules.itsx_extraction: true`. When active, denoised sequences pass through ITSx to extract the specified ITS region before classification.
+
+#### Clustering
+
+```yaml
+clustering:
+  cluster_id: 0.97
+  threads: 4
+```
+
+Enable with `modules.clustering: true`. Produces OTU clusters instead of ESVs.
 
 #### Classification
 
 ```yaml
 modules:
   classification: true
-  classification_engine: "rdp"    # "rdp" or "sintax" (one per run)
+  classification_engine: "rdp"
 
 classification:
-  marker: "COI"                  # Marker gene type
-  min_confidence: 0.8               # Confidence threshold
-
-  # RDP engine settings
+  min_confidence: 0.8
   rdp:
-    memory_gb: 20                    # Memory for RDP classifier
-    use_custom_classifier: true      # Use custom or built-in
-    classifier_path: "runtime/classifiers/COI.properties"  # Custom classifier
-    builtin_classifier: "fungallsu"  # Built-in choice
-
-  # VSEARCH SINTAX engine settings (optional)
+    memory_gb: 20
+    use_custom_classifier: true
+    classifier_path: null
+    builtin_classifier: "fungallsu"
   sintax:
-    db_fasta: null                   # SINTAX-formatted DB FASTA (headers include `;tax=...;`)
-    cutoff: null                     # Defaults to min_confidence
+    db_fasta: null
+    cutoff: null
     threads: 4
 ```
 
-**Marker Types:**
-- `COI` - Cytochrome oxidase I (animals)
-- `16S` - 16S rRNA (bacteria, archaea)
-- `ITS` - Internal transcribed spacer (fungi)
-- `12S` - 12S rRNA (vertebrates)
-- `rbcL` - RuBisCO large subunit (plants)
+Note the correct nested paths: `classification.rdp.use_custom_classifier` (not `classification.use_custom_classifier`).
 
-**Classifier Options:**
+**Engine selection** (one per run, set via `modules.classification_engine`):
+- `"rdp"` — RDP Classifier (default)
+- `"sintax"` — VSEARCH SINTAX with output converted to RDP-like table
 
 | Option | When to Use |
-|--------|--------------|
+|--------|-------------|
 | `use_custom_classifier: true` | COI, 12S, rbcL, custom markers |
 | `use_custom_classifier: false` | 16S, ITS fungi (built-in classifiers) |
-
-**Multiple tool integration (one per run):**
-- Use `modules.classification_engine: "rdp"` (default) for RDP Classifier.
-- Use `modules.classification_engine: "sintax"` to classify with VSEARCH SINTAX and convert output into the RDP-like table MetaWorks expects downstream.
-
-Legacy configs may still use `classification.engine`, but `modules.classification_engine` takes precedence when set.
-
----
 
 #### Pseudogene Filtering (Optional)
 
 ```yaml
 pseudogene_filtering:
   method: "hmm"                  # "hmm" or "orf"
-
-  # Grep filtering for taxonomy targeting
-  grep_type: 1                     # 1=simple, 2=compound
-  taxon1: "-e Arthropoda"           # First grep pattern
-  taxon2: ""                         # Second grep pattern (compound only)
-
-  hmm_profile: "config/hmm/bold.hmm"  # HMM profile path
-  genetic_code: 5                   # Genetic code (2 or 5 for COI)
+  grep_type: 1                   # 1=simple, 2=compound
+  taxon1: "-e Arthropoda"        # First grep pattern
+  taxon2: "-v Chordata"          # Second grep pattern (compound only)
+  hmm_profile: "config/hmm/bold.hmm"
+  genetic_code: 5                # Genetic code (2 or 5 for COI)
+  orf_start_codon: 2
+  min_orf_length: 30
+  ignore_nested_orfs: true
+  strand: "plus"
 ```
-
-**Methods:**
 
 | Method | Description | Best For |
 |--------|-------------|-----------|
 | `hmm` | HMM profile scoring | COI arthropoda, well-curated HMMs |
 | `orf` | ORF length filtering | Any protein-coding gene |
 
-**Grep Filtering Options:**
+| Genetic Code | Use For |
+|-------------|---------|
+| `2` | Vertebrate mitochondrial |
+| `5` | Invertebrate mitochondrial |
 
-| Type | When to Use | Example |
-|------|--------------|---------|
-| `grep_type: 1` (simple) | Target one taxon | `taxon1: "-e Arthropoda"` includes Arthropoda |
-| `grep_type: 2` (compound) | Include/exclude taxa | `taxon1: "-e Metazoa" + `taxon2: "-v Chordata"` (includes Metazoa, excludes Chordata) |
-
-**Genetic Codes:**
-- `2` - Vertebrate mitochondrial (vertebrate COI)
-- `5` - Invertebrate mitochondrial (invertebrate COI)
-
----
-
-### Step 5: Output Options
+#### Output
 
 ```yaml
 output:
   report_type: 1                 # 1=combined CSV, 2=separate files
   include_intermediate: false     # Keep or delete intermediate files
-  compress_output: true          # Gzip output files
-  html_report: false            # Generate HTML report (not yet implemented)
+  compress_output: true           # Gzip output files
+  html_report: false              # Generate HTML report (not yet implemented)
 ```
 
-**Report Type:**
-
 | Type | When to Use | Output |
-|------|--------------|---------|
+|------|--------------|--------|
 | `1` (combined) | <100 samples | Single CSV with all results |
 | `2` (separate) | 100+ samples | Separate ESV.table, taxonomy.csv, sequences.fasta |
-
-**HTML Report:** Currently not implemented. This feature is planned for future release.
 
 ---
 
@@ -437,23 +426,21 @@ output:
 ```yaml
 # MetaWorks User Configuration
 
-pipeline:
-  name: "esv"
-  output_dir: "COI_results"
-  parallel_jobs: 4
-
 input:
   sample_source: "folder"
-  samples_csv: "samples.csv"
   fastq_dir: "data/reads"
 
 modules:
-  preprocessing: true
   trimming: true
   denoising: true
+  clustering: false
+  itsx_extraction: false
   classification: true
+  classification_engine: "rdp"
   pseudogene_filtering: true
   stats: true
+  global_esv: false
+  global_otu: false
 
 preprocessing:
   quality_score: 13
@@ -462,6 +449,7 @@ preprocessing:
 trimming:
   adapters: "adapters/COI.fasta"
   min_length: 150
+  quality_cutoff: "20,20"
 
 denoising:
   pool_samples: true
@@ -469,13 +457,15 @@ denoising:
 
 classification:
   marker: "COI"
-  memory_gb: 20
-  use_custom_classifier: true
-  classifier_path: "classifiers/COI.properties"
+  min_confidence: 0.8
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
 
 pseudogene_filtering:
   method: "hmm"
-  target_taxon: "Arthropoda"
+  taxon1: "-e Arthropoda"
+  taxon2: "-v Chordata"
   hmm_profile: "config/hmm/bold.hmm"
   genetic_code: 5
 
@@ -485,203 +475,245 @@ output:
   compress_output: true
 ```
 
-**Total: ~50 lines** (vs. ~150 lines in old format!)
+---
+
+## Pipeline Data Flow
+
+```mermaid
+graph TD
+    A[Input FASTQ] --> R{Read mode?}
+    R -->|Paired| P[Pair reads]
+    R -->|Single-read| B
+    R -->|Dual-indexed| DI[Pair reads + per-sample adapters]
+    DI --> B
+    P --> B{Trimming}
+    B --> C[Denoising]
+    C --> D{ITSx enabled?}
+    D -->|Yes| E[ITSx Extract]
+    D -->|No| F{Clustering?}
+    E --> F
+    F -->|ESV| G[Classification]
+    F -->|OTU| H[Cluster 97%]
+    H --> G
+    G --> I{Pseudogene?}
+    I -->|Yes| J[ORF/HMM Filter]
+    I -->|No| K[Results + Stats]
+    J --> K
+
+    C --> L{Global ESV?}
+    L -->|Yes| M[Cross-trial derep]
+    M --> K
+
+    C --> N{Global OTU?}
+    N -->|Yes| O[Cross-trial cluster]
+    O --> K
+```
+
+**Standard path:** Trimming → Denoising → Classification → Results + Stats
+
+**Single-read path:** No pairing step; trim single primer (`-g`/`-a`) directly, then denoise. Set `trimming.read_mode: "single"` and optionally `trimming.enable_rc: true` for R2 files.
+
+**Dual-indexed path:** Pair reads → generate per-sample adapters from CSV → trim per-sample → denoise. Set `trimming.adapter_source: "csv"` and provide `trimming.adapter_csv`.
+
+**ITS path:** Denoising → ITSx Extract → Classification (on ITS-region sequences) → Results
+
+**OTU path:** Denoising → Cluster at 97% → Classification on centroids → Results
+
+**Pseudogene path:** Classification → ORF/HMM filter → Results
+
+**Global paths:** Cross-trial dereplication/clustering runs after individual trial results are complete.
 
 ---
 
 ## Common Use Cases
 
-### Case 1: COI Analysis (Invertebrates)
+### Case 1: COI Invertebrates
 
 ```yaml
-pipeline:
-  name: "esv"
-  output_dir: "COI_invertebrates"
+input:
+  fastq_dir: "data/reads"
 
-classification:
-  marker: "COI"
-  use_custom_classifier: true
-  classifier_path: "classifiers/COI.properties"
-
-pseudogene_filtering:
-  method: "hmm"
-  target_taxon: "Arthropoda"
-  genetic_code: 5  # Invertebrate mitochondrial
-```
-
----
-
-### Case 2: COI Analysis (Vertebrates)
-
-```yaml
-pipeline:
-  name: "esv"
-  output_dir: "COI_vertebrates"
-
-classification:
-  marker: "COI"
-  use_custom_classifier: true
-  classifier_path: "classifiers/COI_vertebrates.properties"
-
-pseudogene_filtering:
-  method: "hmm"
-  target_taxon: "Chordata"
-  genetic_code: 2  # Vertebrate mitochondrial
-```
-
----
-
-### Case 3: ITS Fungi
-
-```yaml
-pipeline:
-  name: "esv"
-  output_dir: "ITS_fungi"
-
-classification:
-  marker: "ITS_fungi"
-  use_custom_classifier: false  # Use built-in
-  builtin_classifier: "fungalits_unite"
-
-# No pseudogene filtering needed for ITS
 modules:
-  pseudogene_filtering: false
+  pseudogene_filtering: true
+
+classification:
+  marker: "COI"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI.properties"
+
+pseudogene_filtering:
+  method: "hmm"
+  taxon1: "-e Arthropoda"
+  taxon2: "-v Chordata"
+  hmm_profile: "config/hmm/bold.hmm"
+  genetic_code: 5
 ```
 
----
+Or simply use the `coi` profile and override just the input directory.
+
+### Case 2: COI Vertebrates
+
+```yaml
+input:
+  fastq_dir: "data/reads"
+
+classification:
+  marker: "COI"
+  rdp:
+    use_custom_classifier: true
+    classifier_path: "runtime/classifiers/COI_vertebrates.properties"
+
+pseudogene_filtering:
+  method: "hmm"
+  taxon1: "-e Chordata"
+  genetic_code: 2
+```
+
+Or use the `coi_vertebrate` profile.
+
+### Case 3: ITS Fungi with ITSx
+
+```yaml
+input:
+  fastq_dir: "data/reads"
+
+modules:
+  itsx_extraction: true
+  classification_engine: "rdp"
+
+itsx_extraction:
+  its_part: "ITS2"
+
+classification:
+  rdp:
+    use_custom_classifier: false
+    builtin_classifier: "fungalits_unite"
+```
+
+Or use the `its` profile (which may already include ITSx settings).
 
 ### Case 4: Large Dataset (100+ Samples)
 
 ```yaml
+input:
+  fastq_dir: "data/large_dataset"
+
 pipeline:
-  parallel_jobs: 8  # More parallel jobs
+  parallel_jobs: 8
 
 denoising:
-  pool_samples: false  # Don't pool for speed
+  pool_samples: false
 
 output:
-  report_type: 2  # Separate files for memory
+  report_type: 2
 ```
-
----
 
 ### Case 5: Low Quality Data
 
 ```yaml
 preprocessing:
-  quality_score: 10  # Lower threshold
+  quality_score: 10
 
 trimming:
-  quality_cutoff: "15,15"  # Less stringent
-  min_length: 100  # Shorter minimum
+  quality_cutoff: "15,15"
+  min_length: 100
 
 denoising:
-  min_cluster_size: 4  # More sensitive
+  min_cluster_size: 4
 ```
 
 ---
 
 ## Troubleshooting
 
+### "Module X not found"
+
+**Cause:** The module name does not match a key in the module registry.
+
+**Solution:** Ensure the module name matches a key in `lib/config/module_registry.py`. Valid module names are: `trimming`, `denoising`, `clustering`, `itsx_extraction`, `classification`, `pseudogene_filtering`, `stats`, `global_esv`, `global_otu`.
+
+### "No sequences after trimming"
+
+**Cause:** Adapter file does not match your primers, or FASTQ files are in the wrong directory.
+
+**Solution:**
+1. Check `trimming.adapters` points to the correct adapter FASTA for your primers
+2. Verify FASTQ files are in the directory specified by `input.fastq_dir`
+3. Try decreasing `trimming.min_adapter_overlap` or increasing `trimming.error_rate`
+
+### "Classifier path not found"
+
+**Cause:** Custom classifier path does not point to an existing file.
+
+**Solution:** If `classification.rdp.use_custom_classifier: true`, ensure `classification.rdp.classifier_path` points to an existing `.properties` file.
+
 ### Validation Errors
 
 **Error:** `preprocessing.quality_score must be between 0 and 40`
 
-**Solution:** Check parameter is within valid range.
+**Solution:** Check parameter is within the valid range. See the parameter tables in [Step 3](#step-3-configure-module-parameters) for valid ranges.
 
----
-
-### File Not Found
-
-**Error:** `Configuration file not found: config/user_config.yaml`
-
-**Solution:** Check file path is correct and file exists.
-
----
-
-### Module Config Missing
-
-**Error:** `Module config not found: modules/preprocessing/module_config.yaml`
-
-**Solution:** Ensure module directory exists and contains `module_config.yaml`.
-
----
-
-### Merging Failed
-
-**Error:** `User config missing required section: pipeline`
-
-**Solution:** Ensure user config has required sections: `pipeline`, `input`.
-
----
-
-### Runtime Errors
-
-**Issue:** Pipeline runs but produces no results
+### "Pipeline runs but produces no results"
 
 **Checklist:**
 1. Adapter file matches your primers
-2. FASTQ files are in correct directory
-3. Classifier path is correct
-4. Quality scores are appropriate for your data
+2. FASTQ files are in the correct directory
+3. Classifier path is correct (if using custom classifier)
+4. Quality thresholds are appropriate for your data
+5. At least `modules.trimming`, `modules.denoising`, and `modules.classification` are enabled
 
----
+### "Profile 'X' not found"
 
-## Advanced Usage
+**Cause:** The profile name does not match any file in `config/presets/`.
 
-### Programmatic Configuration
+**Solution:** List available profiles:
 
 ```python
-from lib.config import ConfigManager
+from lib.config.config_manager import ConfigManager
+manager = ConfigManager("/path/to/MetaWorks-2.0")
+profiles = manager.list_available_profiles()
+for p in profiles:
+    print(f"  {p['name']}: {p['description']}")
+```
 
-# Load and validate
-config = ConfigManager.load("config/user_config.yaml")
+---
 
-# Get module config
-preproc_config = config.get_module_config("preprocessing")
+## Programmatic Configuration
+
+```python
+from lib.config.config_manager import ConfigManager, load_config
+
+# Full control with overrides
+config = ConfigManager.load(
+    profile="coi",
+    workflow="esv",
+    overrides={"input": {"fastq_dir": "/data/samples"}},
+    repo_root="/path/to/MetaWorks-2.0"
+)
+
+print(config.merged["classification"]["min_confidence"])
 
 # Export for workflow
-workflow_config = config.export_for_workflow("esv")
-
-# Validate
-errors = config.validate()
-if errors:
-    for error in errors:
-        print(f"Error: {error}")
+config_dict = config.export_for_workflow()
 ```
 
----
+Or using the convenience function:
 
-### Environment Variables
-
-Override config values with environment variables:
-
-```bash
-export METAWORKS_PIPELINE_PARALLEL_JOBS=8
-export METAWORKS_CLASSIFICATION_MEMORY_GB=32
-
-# Config manager will read these automatically
+```python
+config = load_config(profile="16s", workflow="esv")
 ```
 
----
+For API/UI use with dictionary input:
 
-## Migration from Old Config
-
-If you have old `config_ESV.yaml` files, migrate them:
-
-```bash
-python scripts/migrate_config.py \
-  --input config/config_ESV.yaml \
-  --output config/user_config.yaml
+```python
+config = ConfigManager.load_from_dict(
+    profile="its",
+    workflow="esv",
+    user_overrides={
+        "input": {"fastq_dir": "/data/samples"},
+        "modules": {"itsx_extraction": True},
+    },
+    repo_root="/path/to/MetaWorks-2.0"
+)
 ```
-
-See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
-
----
-
-## Further Reading
-
-- [CONFIGURATION_DESIGN.md](CONFIGURATION_DESIGN.md) - Architecture and design
-- [CONFIGURATION_EXPLANATION.md](CONFIGURATION_EXPLANATION.md) - Detailed parameter explanations
-- [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) - Migrating old configs
-- [MODULE_STANDARDS.md](MODULE_STANDARDS.md) - Module development guide

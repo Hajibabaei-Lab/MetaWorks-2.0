@@ -4,15 +4,12 @@ This guide covers deploying MetaWorks 2.0 in various environments: local develop
 
 ## Recommended 2026 Deployment
 
-MetaWorks now supports a split deployment:
+MetaWorks supports a split deployment:
 
-- `MetaWorks-2.0` stays the backend runner and exposes `/api/*`
-- `metaworks-ui` is a separate frontend project served in its own container
-- `deploy/docker-compose.yml` in the backend repo runs the split stack with Caddy proxying `/api/*`
-- the default split deployment uses the backend container's own `conda` runtime so users only need
-  Docker/Compose on the host
-
-For new deployments, prefer the split stack over the older backend-served static UI.
+- `backend` container runs FastAPI and executes Snakemake pipelines via its own conda runtime
+- `frontend` container builds the Vue 3 SPA and serves it via Caddy, proxying `/api/*` to the backend
+- `deploy/docker-compose.yml` runs the split stack
+- default runtime is `conda` inside the backend container, so users only need Docker/Compose on the host
 
 ## Table of Contents
 
@@ -44,21 +41,21 @@ For new deployments, prefer the split stack over the older backend-served static
 2. **Create conda environment:**
    ```bash
    conda env create -f environment.yml
-   conda activate metaworks
+   conda activate MetaWorks
    ```
 
 3. **Build the UI:**
    ```bash
-   cd ui
+   cd frontend
    npm install
    npm run build
    cd ..
    ```
 
-4. **Start the server:**
-   ```bash
-   uvicorn api.main:app --host 0.0.0.0 --port 8000
-   ```
+4. **Start the API server:**
+    ```bash
+    uvicorn api.main:app --host 0.0.0.0 --port 8000
+    ```
 
 5. **Open the web UI:**
    Navigate to `http://localhost:8000` in your browser.
@@ -70,8 +67,8 @@ For new deployments, prefer the split stack over the older backend-served static
 For development and testing on a local machine with conda:
 
 ```bash
-# Activate the metaworks environment
-conda activate metaworks
+# Activate the MetaWorks environment
+conda activate MetaWorks
 
 # Start the API server
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
@@ -96,7 +93,7 @@ To use Docker for running the pipeline while running the API server locally:
 3. **Configure runs in the web UI:**
    - Set Runtime to "Docker"
    - Container image: `docker://metaworks:latest`
-   - Add bind paths as needed (e.g., `/path/to/your/data:/workspace/input`)
+   - Add bind paths as needed (e.g., `/path/to/your/data:/MetaWorks/input`)
 
 ### Development Mode
 
@@ -104,7 +101,7 @@ For UI development with hot-reloading:
 
 ```bash
 # Terminal 1: Start Vite dev server
-cd ui
+cd frontend
 npm run dev
 
 # Terminal 2: Start API server
@@ -121,23 +118,14 @@ Docker Compose provides the easiest way to deploy to a server:
 
 1. **Build and start:**
    ```bash
-   docker-compose up -d --build
+   docker compose -f deploy/docker-compose.yml up -d --build
    ```
 
-2. **Configure volumes:**
-   Edit `docker-compose.yml` to mount your data directories:
-   ```yaml
-   volumes:
-     - ./runtime:/workspace/runtime
-     - /path/to/your/data:/workspace/input:ro
-     - ./config:/workspace/config:ro
-   ```
+2. **Configure environment variables:**
+   Adjust environment variables in `deploy/docker-compose.yml` or via a `.env` file next to it.
 
-3. **Configure environment variables:**
-   Adjust environment variables in `docker-compose.yml` as needed.
-
-4. **Access the UI:**
-   Navigate to `http://your-server:8000`
+3. **Access the UI:**
+   Navigate to `http://your-server:8080` (Caddy serves the frontend and proxies `/api/*` to the backend on port 8000).
 
 ### Manual Deployment
 
@@ -146,79 +134,27 @@ For more control over the deployment:
 1. **Install dependencies:**
    ```bash
    conda env create -f environment.yml
-   conda activate metaworks
+   conda activate MetaWorks
    ```
 
 2. **Build the UI:**
    ```bash
-   cd ui
+   cd frontend
    npm install
    npm run build
    cd ..
    ```
 
 3. **Configure environment variables:**
-   Create a `.env` file:
+   See the full environment variable table below for all `METAWORKS_*` variables.
+
+4. **Start the API server:**
    ```bash
-   METAWORKS_REPO_ROOT=/path/to/MetaWorks-2.0
-   METAWORKS_RUN_ROOT=/path/to/runtime/runs
-   METAWORKS_ARTIFACT_ROOT=/path/to/runtime/artifacts
-   METAWORKS_ADAPTER_ROOT=/path/to/runtime/adapters
-   METAWORKS_CLASSIFIER_ROOT=/path/to/runtime/classifiers
-   METAWORKS_STAGING_ROOT=/path/to/runtime/staging
-   METAWORKS_SINGULARITY_CACHE=/path/to/runtime/cache
-   METAWORKS_DEFAULT_RUNTIME=docker
-   METAWORKS_CONTAINER_IMAGE=docker://metaworks:latest
+   uvicorn api.main:app --host 0.0.0.0 --port 8000
    ```
 
-4. **Start with a production server:**
-   ```bash
-   gunicorn api.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-   ```
-
-5. **Set up a reverse proxy (optional but recommended):**
-
-   **Nginx example:**
-   ```nginx
-   server {
-       listen 80;
-       server_name metaworks.example.com;
-
-       location / {
-           proxy_pass http://localhost:8000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-   }
-   ```
-
-### Using systemd (Linux)
-
-Create a systemd service for automatic startup:
-
-```ini
-# /etc/systemd/system/metaworks.service
-[Unit]
-Description=MetaWorks Control Node
-After=network.target
-
-[Service]
-Type=simple
-User=metaworks
-WorkingDirectory=/path/to/MetaWorks-2.0
-Environment="PATH=/path/to/conda/envs/metaworks/bin"
-ExecStart=/path/to/conda/envs/metaworks/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start the service:
-```bash
-sudo systemctl enable metaworks
-sudo systemctl start metaworks
-```
+5. **Serve the frontend:**
+   Use a reverse proxy (Caddy, Nginx) to serve the built frontend and proxy `/api/*` to port 8000.
 
 ## HPC Deployment
 
@@ -243,7 +179,7 @@ Run MetaWorks on the login node and access via SSH tunnel:
 1. **Start MetaWorks on the HPC login node:**
    ```bash
    module load conda
-   conda activate metaworks
+   conda activate MetaWorks
    uvicorn api.main:app --host 127.0.0.1 --port 8000
    ```
 
@@ -283,24 +219,12 @@ sudo singularity build metaworks.sif docker://metaworks:latest
 # Use in MetaWorks UI:
 # Runtime: Apptainer
 # Container image: /path/to/metaworks.sif
-# Bind paths: /shared/storage:/workspace/storage
+# Bind paths: /shared/storage:/MetaWorks/storage
 ```
 
 ### Scheduler Integration
 
-MetaWorks integrates with SLURM scheduler out of the box. Configure in the web UI:
-
-1. **Set Runtime** to "Docker" or "Apptainer"
-2. **Configure Scheduler Settings** in system config:
-   ```yaml
-   scheduler:
-     type: slurm
-     partition: compute
-     account: your-account
-     time: "24:00:00"
-     cpus-per-task: 8
-     memory: 32G
-   ```
+Scheduler integration (SLURM, PBS) is planned for a future release. The current architecture uses local `subprocess.Popen` for pipeline execution. When implemented, the API surface will remain the same — only the runner backend changes.
 
 ## Building the UI
 
@@ -312,7 +236,7 @@ MetaWorks integrates with SLURM scheduler out of the box. Configure in the web U
 
 1. **Install dependencies:**
    ```bash
-   cd ui
+   cd frontend
    npm install
    ```
 
@@ -320,7 +244,7 @@ MetaWorks integrates with SLURM scheduler out of the box. Configure in the web U
    ```bash
    npm run build
    ```
-   This creates the `ui/dist` directory with optimized static files.
+   This creates the `frontend/dist` directory with optimized static files.
 
 3. **Build for development (hot-reload):**
    ```bash
@@ -333,64 +257,42 @@ MetaWorks integrates with SLURM scheduler out of the box. Configure in the web U
    npm run preview
    ```
 
-### Zero-Download Deployment
-
-The Vue UI is built into static files that are served by FastAPI. Users don't need to install Node.js or run build commands - they simply access the web interface.
-
 ## Configuration
 
 ### Environment Variables
 
-MetaWorks uses environment variables for configuration:
+MetaWorks uses environment variables (prefix `METAWORKS_`) for all runtime configuration. These are loaded by `api/config.py` via pydantic-settings.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `METAWORKS_REPO_ROOT` | Path to MetaWorks repository | Auto-detected |
-| `METAWORKS_RUN_ROOT` | Directory for run outputs | `runtime/runs` |
-| `METAWORKS_ARTIFACT_ROOT` | Directory for artifacts | `runtime/artifacts` |
-| `METAWORKS_ADAPTER_ROOT` | Directory for adapter files | `runtime/adapters` |
-| `METAWORKS_CLASSIFIER_ROOT` | Directory for classifiers | `runtime/classifiers` |
-| `METAWORKS_STAGING_ROOT` | Directory for staging | `runtime/staging` |
-| `METAWORKS_SINGULARITY_CACHE` | Singularity cache directory | `runtime/cache` |
+| `METAWORKS_REPO_ROOT` | Path to MetaWorks repository | Auto-detected from `api/` parent |
+| `METAWORKS_RUN_ROOT` | Directory for run outputs | `<repo>/runtime/runs` |
+| `METAWORKS_STAGING_ROOT` | Directory for staging uploads | `<repo>/runtime/staging` |
+| `METAWORKS_ARTIFACT_ROOT` | Directory for artifacts | `<repo>/runtime/artifacts` |
+| `METAWORKS_CLASSIFIER_ROOT` | Directory for classifier files | `<repo>/runtime/classifiers` |
+| `METAWORKS_ADAPTER_ROOT` | Directory for adapter FASTA files | `<repo>/runtime/adapters` |
+| `METAWORKS_STATE_FILE` | Path to run state JSON | `<repo>/runtime/state/runs.json` |
+| `METAWORKS_SNAKEFILES` | Workflow entrypoints (JSON) | `{"esv":"workflow/Snakefile","otu":"workflow/Snakefile"}` |
 | `METAWORKS_DEFAULT_RUNTIME` | Default runtime (conda/docker/apptainer) | `docker` |
-| `METAWORKS_CONTAINER_IMAGE` | Default container image | None |
-
-### System Configuration
-
-Edit `config/system_config.yaml` for system-wide settings:
-
-```yaml
-# Scheduler configuration
-scheduler:
-  type: slurm  # slurm, pbs, local
-  partition: compute
-  account: your-account
-
-# Resource defaults
-resources:
-  default_cores: 8
-  default_memory: 32G
-  default_time: "24:00:00"
-
-# API settings
-api:
-  max_runs: 100
-  log_retention_days: 30
-```
-
-### User Configuration
-
-Users can override defaults via `config/user_config.yaml` or through the web UI.
+| `METAWORKS_ALLOWED_RUNTIMES` | Comma-separated allowed runtimes | `docker,apptainer` |
+| `METAWORKS_RETENTION_POLICY` | Run data retention mode | `until_download` |
+| `METAWORKS_CONTAINER_IMAGE` | Default container image URI | `docker://metaworks:latest` |
+| `METAWORKS_BIND_PATHS` | Additional bind mounts (JSON list) | `[]` |
+| `METAWORKS_SINGULARITY_CACHE` | Apptainer/Singularity cache directory | `<repo>/runtime/cache` |
+| `METAWORKS_DEFAULT_CORES` | Cores requested per job | `32` |
+| `METAWORKS_LOG_TAIL_LINES` | Default lines for log tail endpoint | `200` |
+| `METAWORKS_SERVE_LEGACY_UI` | Serve legacy static UI from backend | `true` |
+| `METAWORKS_CORS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:5173,...` |
 
 ## Troubleshooting
 
 ### UI Not Loading
 
-**Problem:** Accessing `http://localhost:8000` shows old UI or 404
+**Problem:** Accessing the UI shows old content or 404
 
 **Solution:** Build the Vue UI:
 ```bash
-cd ui
+cd frontend
 npm install
 npm run build
 ```
@@ -427,11 +329,7 @@ chmod -R 777 runtime/runs
 
 **Problem:** Jobs not submitting to scheduler
 
-**Solution:** Check:
-1. Scheduler is configured in system config
-2. Account and partition are valid
-3. You have proper cluster permissions
-4. Scheduler commands (sbatch, qsub) are available
+**Solution:** Scheduler integration (SLURM, PBS) is planned for a future release. The current implementation uses local subprocess execution only.
 
 ### Build Errors
 
@@ -439,7 +337,7 @@ chmod -R 777 runtime/runs
 
 **Solution:** Clear cache and retry:
 ```bash
-cd ui
+cd frontend
 rm -rf node_modules package-lock.json
 npm install
 ```
