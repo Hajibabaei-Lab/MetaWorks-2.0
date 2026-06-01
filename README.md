@@ -190,12 +190,16 @@ See [Module Standards](docs/MODULE_STANDARDS.md) for guidance on creating new pi
 
 GNU General Public License v3.0
 
+## Origin
+
+MetaWorks 2.0 is an updated and extended version of [MetaWorks v1](https://github.com/terrimporter/MetaWorks) by Terri Porter, with new features, a modular Snakemake architecture, a FastAPI backend, a Vue 3 frontend, and Perl scripts migrated to Python.
+
 ## Citation
 
 If you use MetaWorks in your research, please cite the MetaWorks paper:
 Porter, T. M., & Hajibabaei, M. (2022). MetaWorks: A flexible, scalable bioinformatic pipeline for high-throughput multi-marker biodiversity assessments. PLOS ONE, 17(9), e0274260. doi: 10.1371/journal.pone.0274260
 
-You can also cite this repository: Teresita M. Porter. (2020, June 25). MetaWorks: A Multi-Marker Metabarcode Pipeline (Version v1.10.0). Zenodo. http://doi.org/10.5281/zenodo.4741407
+The original v1 repository is archived at: Teresita M. Porter. (2020, June 25). MetaWorks: A Multi-Marker Metabarcode Pipeline (Version v1.13.0). Zenodo. http://doi.org/10.5281/zenodo.4741407
 
 If you use this dataflow for making COI taxonomic assignments, please cite the COI classifier publication:
 Porter, T. M., & Hajibabaei, M. (2018). Automated high throughput animal CO1 metabarcode classification. Scientific Reports, 8, 4226.
