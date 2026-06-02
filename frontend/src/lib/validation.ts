@@ -84,30 +84,33 @@ export const pathsResponseSchema: z.ZodType<PathsResponse> = z.object({
   container_image: z.string(),
 });
 
-const fieldSchema: z.ZodType<import("../generated/api").FieldSchema> = z.lazy(() =>
+const nullishOptional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (value === null ? undefined : value), schema.optional());
+
+const fieldSchema: z.ZodType<import("../generated/api").FieldSchema, z.ZodTypeDef, unknown> = z.lazy(() =>
   z.object({
     type: z.string(),
-    default: z.unknown().optional(),
-    description: z.string().optional(),
-    constraints: z.record(z.string(), z.unknown()).optional(),
-    options: z.array(z.unknown()).optional(),
-    visible_when: z.string().optional(),
-    label: z.string().optional(),
-    fields: z.record(z.string(), fieldSchema).optional(),
+    default: nullishOptional(z.unknown()),
+    description: nullishOptional(z.string()),
+    constraints: nullishOptional(z.record(z.string(), z.unknown())),
+    options: nullishOptional(z.array(z.unknown())),
+    visible_when: nullishOptional(z.string()),
+    label: nullishOptional(z.string()),
+    fields: nullishOptional(z.record(z.string(), fieldSchema)),
   }),
 );
 
-export const configSchemaResponseSchema: z.ZodType<ConfigSchemaResponse> = z.object({
+export const configSchemaResponseSchema: z.ZodType<ConfigSchemaResponse, z.ZodTypeDef, unknown> = z.object({
   profile: z.string(),
   marker: z.string(),
   workflow: z.string(),
   sections: z.record(
     z.string(),
     z.object({
-      label: z.string(),
-      enabled_by: z.string().optional(),
-      collapsed: z.boolean().optional(),
-      fields: z.record(z.string(), fieldSchema),
+      label: nullishOptional(z.string()).default(""),
+      enabled_by: nullishOptional(z.string()),
+      collapsed: nullishOptional(z.boolean()),
+      fields: nullishOptional(z.record(z.string(), fieldSchema)).default({}),
     }),
   ),
 });
@@ -234,4 +237,3 @@ export function buildRunSubmission(form: SubmitRunFormState): RunSubmissionReque
     keep_outputs: parsed.keep_outputs,
   };
 }
-

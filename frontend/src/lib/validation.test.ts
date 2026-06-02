@@ -1,4 +1,4 @@
-import { buildRunSubmission, parseJsonObject } from "./validation";
+import { buildRunSubmission, configSchemaResponseSchema, parseJsonObject } from "./validation";
 
 describe("buildRunSubmission", () => {
   it("normalizes the form into an API payload", () => {
@@ -30,3 +30,36 @@ describe("buildRunSubmission", () => {
   });
 });
 
+describe("configSchemaResponseSchema", () => {
+  it("accepts null optional schema metadata returned by the backend", () => {
+    const parsed = configSchemaResponseSchema.parse({
+      profile: "coi",
+      marker: "COI",
+      workflow: "esv",
+      sections: {
+        pipeline: {
+          label: "Pipeline Settings",
+          enabled_by: null,
+          collapsed: null,
+          fields: {
+            parallel_jobs: {
+              type: "integer",
+              default: 4,
+              description: null,
+              constraints: { ge: 1, le: 32 },
+              options: null,
+              visible_when: null,
+              label: null,
+              fields: null,
+            },
+          },
+        },
+      },
+    });
+
+    expect(parsed.sections.pipeline.enabled_by).toBeUndefined();
+    expect(parsed.sections.pipeline.collapsed).toBeUndefined();
+    expect(parsed.sections.pipeline.fields.parallel_jobs.description).toBeUndefined();
+    expect(parsed.sections.pipeline.fields.parallel_jobs.fields).toBeUndefined();
+  });
+});
