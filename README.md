@@ -188,4 +188,4 @@ Also cite the tools used in your analysis:
 
 ## Acknowledgments
 
-MetaWorks 2.0 is an updated and extended version of [MetaWorks v1](https://github.com/terrimporter/MetaWorks) by Terri Porter. Development is led by the Hajibabaei Lab with contributions from Yaye Song,Terri Porter and Mehrdad Hajibabaei.
+MetaWorks 2.0 is an updated and extended version of [MetaWorks v1](https://github.com/terrimporter/MetaWorks) by Terri Porter. Development is led by the Hajibabaei Lab with contributions from Yaye Song, Terri Porter and Mehrdad Hajibabaei.
