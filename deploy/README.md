@@ -127,6 +127,7 @@ Available variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `METAWORKS_FRONTEND_BIND` | `127.0.0.1:8080:8080` | Host:port binding for the frontend |
+| `METAWORKS_DEFAULT_RUNTIME` | `conda` | Default Snakemake runtime. In release Compose deployments this means the backend container's bundled Conda environment, not host Conda. |
 | `METAWORKS_ALLOWED_RUNTIMES` | `conda` | Comma-separated list of allowed Snakemake runtimes |
 | `METAWORKS_CORS_ALLOWED_ORIGINS` | `http://localhost:5173,...` | Allowed CORS origins for the API |
 
@@ -145,6 +146,6 @@ Backend container:
 
 ## Notes
 
-- The default runtime is `conda`, so pipeline execution stays inside the backend container.
+- The default runtime is `conda`, so pipeline execution stays inside the backend container's bundled MetaWorks Conda environment. Users do not need Conda or Snakemake on the host.
 - Runtime state, uploads, logs, and artifacts persist in the `metaworks-runtime` named volume.
 - The backend is independently usable through `docker run -it ... bash` for CLI-only pipeline work.

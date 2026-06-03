@@ -1,0 +1,15 @@
+flowchart LR
+    Trials["Completed trial<br/>results directories"]
+
+    Trials --> CatDenoised["Concatenate denoised<br/>sequences across trials"] --> GlobalDerep["Global dereplication<br/>VSEARCH fastx_uniques<br/>SHA1 relabeling"] --> OTUCluster["Cluster into OTUs<br/>VSEARCH cluster_smallmem<br/>id=0.97"] --> OTUDB["Global OTU database"] --> OTUMap["Map trial ESVs<br/>VSEARCH usearch_global<br/>id=0.97"] --> OTUResults["global_results.csv<br/>GlobalOTU column"]
+
+    Trials --> TrialSeqs["Extract sequences<br/>from each trial results.csv"]
+
+    TrialSeqs --> OTUMap
+
+    classDef global fill:#f8fafc,stroke:#64748b,color:#172033;
+    classDef core fill:#ecfdf5,stroke:#0f766e,color:#172033;
+    classDef output fill:#f0fdf4,stroke:#15803d,color:#172033;
+    class Trials,TrialSeqs global;
+    class CatDenoised,GlobalDerep,OTUCluster,OTUDB,OTUMap core;
+    class OTUResults output;

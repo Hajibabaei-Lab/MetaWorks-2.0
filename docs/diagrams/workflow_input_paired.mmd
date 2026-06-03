@@ -1,0 +1,12 @@
+flowchart LR
+    PE["R1 / R2 FASTQ"] --> Pair["Pair reads<br/>SeqPrep"] --> TrimPE["Trim primers<br/>Cutadapt"]
+    PrimerSeqs["Primer sequences<br/>adapters.fasta"] --> TrimPE
+
+    TrimPE --> Ready["Trimmed reads<br/>ready for denoising"]
+
+    classDef input fill:#eff6ff,stroke:#2563eb,color:#172033;
+    classDef adapter fill:#fef9c3,stroke:#ca8a04,color:#172033;
+    classDef core fill:#ecfdf5,stroke:#0f766e,color:#172033;
+    class PE input;
+    class PrimerSeqs adapter;
+    class Pair,TrimPE,Ready core;

@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "v*"
-  release:
-    types: [published]
 
 env:
   REGISTRY: ghcr.io
@@ -13,7 +11,24 @@ env:
   FRONTEND_IMAGE: ghcr.io/hajibabaei-lab/metaworks-frontend
 
 jobs:
+  publish-github-release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file CHANGELOG.md
+
   build-and-push:
+    needs: publish-github-release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,7 +72,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test — backend API health
+      - name: Smoke test - backend API health
         run: |
           docker run -d --name backend-test -p 8000:8000 \
             -e METAWORKS_DEFAULT_RUNTIME=conda \
@@ -77,11 +92,11 @@ jobs:
           echo "$HEALTH" | grep -q "ok" || { docker logs backend-test; exit 1; }
           docker stop backend-test
 
-      - name: Smoke test — backend CLI
+      - name: Smoke test - backend CLI
         run: |
           docker run --rm metaworks-backend:test snakemake --version
 
-      - name: Smoke test — frontend HTTP
+      - name: Smoke test - frontend HTTP
         run: |
           docker run -d --name frontend-test -p 8080:8080 metaworks-frontend:test
           for i in $(seq 1 15); do

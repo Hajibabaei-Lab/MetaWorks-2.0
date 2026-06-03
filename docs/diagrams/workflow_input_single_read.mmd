@@ -1,0 +1,25 @@
+flowchart LR
+    Input["Single-read FASTQ"]
+
+    Input --> Split{"process_as?"}
+
+    Split -->|"F"| R1["R1 FASTQ"]
+    Split -->|"R"| RC["R2 FASTQ"] --> RevComp["Reverse<br/>complement"]
+
+    R1 --> TrimF["Trim primer<br/>Cutadapt -g"]
+    RevComp --> TrimR["Trim primer<br/>Cutadapt -a"]
+
+    Primer["Primer sequence"] --> TrimF
+    Primer --> TrimR
+
+    TrimF --> Ready["Trimmed reads<br/>ready for denoising"]
+    TrimR --> Ready
+
+    classDef input fill:#eff6ff,stroke:#2563eb,color:#172033;
+    classDef adapter fill:#fef9c3,stroke:#ca8a04,color:#172033;
+    classDef core fill:#ecfdf5,stroke:#0f766e,color:#172033;
+    classDef decision fill:#f1f5f9,stroke:#475569,color:#172033;
+    class Input,R1,RC input;
+    class Primer adapter;
+    class RevComp,TrimF,TrimR,Ready core;
+    class Split decision;

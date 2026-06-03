@@ -78,7 +78,7 @@ Key scripts by function:
 | `formatAdapters_anchored_filename.py` | Format per-sample adapters from CSV |
 | `filter_rdp.py` | Filter RDP classification results |
 | `filter_rdp_taxonomy.py` | Filter taxonomy by confidence |
-| `parallel_rdp.py` | Parallel RDP classifier wrapper |
+| `parallel_rdp.py` | Parallel RDP classifier — splits FASTA into chunks, dispatches concurrent JVMs, concatenates results |
 | `add_abundance_to_rdp_out.py` | Merge abundance data with RDP output |
 | `add_seqs_to_tax3.py` | Add sequences to taxonomy output |
 | `add_seqs_to_tax4.py` | Add sequences to taxonomy output (alt format) |
@@ -101,6 +101,31 @@ Key scripts by function:
 ### `marker_defs.py` — Single Source of Truth
 
 `workflow/scripts/marker_defs.py` defines marker properties (taxonomy regions, primer sequences, expected lengths) for the 13 supported markers. All pipeline components that need marker information consult this file.
+
+### `parallel_rdp.py` — Parallel RDP Classifier Execution
+
+`workflow/scripts/parallel_rdp.py` is the production entry point for RDP taxonomic assignment. It is invoked by the `taxonomic_assignment` rule in `workflow/rules/classification/rdp_classifier.smk` and provides multi-core parallelism for the Java-based RDP classifier.
+
+**Execution model:**
+
+1. Reads the entire input FASTA using Biopython and splits records evenly into *N* chunk files (where *N* = `--threads`).
+2. Dispatches each chunk to a separate `rdp_classifier` JVM subprocess via `concurrent.futures.ThreadPoolExecutor` with a 12-hour per-chunk timeout.
+3. Each JVM receives `rdp_classifier -Xmx{memory}G classify {options} -o {result} {chunk}`.
+4. Resolves classifier properties paths from multiple locations (absolute, CWD-relative, `runtime/classifiers/`, `config/classifiers/`).
+5. Concatenates all chunk results into a single output file and cleans up temporary files.
+
+**CLI interface:**
+
+```
+python3 workflow/scripts/parallel_rdp.py \
+    --input <fasta> \
+    --output <result_file> \
+    --threads <N> \
+    --memory <Xg> \
+    --options '<rdp_options>'
+```
+
+**Resource note:** Total JVM memory consumption is `threads × memory`. See the Configuration Guide for tuning guidance.
 
 ## Module Registry
 

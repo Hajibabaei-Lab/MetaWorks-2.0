@@ -1,0 +1,43 @@
+{
+  "title": "MetaWorks 2.0",
+  "description": "MetaWorks 2.0 is a modular, API-backed, web-operable metabarcoding platform for ESV and OTU workflows. This release migrates the v1 Snakemake pipeline to a rule-module architecture, adds validated configuration management, replaces Perl helper scripts with Python, introduces FastAPI and Vue interfaces, and adds Docker Compose deployment.",
+  "creators": [
+    {
+      "name": "Song, Yaye",
+      "affiliation": "Hajibabaei Lab, University of Guelph"
+    },
+    {
+      "name": "Hajibabaei, Mehrdad",
+      "affiliation": "Hajibabaei Lab, University of Guelph"
+    },
+    {
+      "name": "Porter, Teresita M.",
+      "affiliation": "University of Guelph"
+    }
+  ],
+  "license": "GPL-3.0-only",
+  "keywords": [
+    "metabarcoding",
+    "bioinformatics",
+    "Snakemake",
+    "ESV",
+    "OTU",
+    "biodiversity",
+    "FastAPI",
+    "Vue"
+  ],
+  "related_identifiers": [
+    {
+      "scheme": "doi",
+      "identifier": "10.1371/journal.pone.0274260",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-article"
+    },
+    {
+      "scheme": "doi",
+      "identifier": "10.5281/zenodo.4741407",
+      "relation": "isDerivedFrom",
+      "resource_type": "software"
+    }
+  ]
+}

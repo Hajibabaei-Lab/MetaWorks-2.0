@@ -1,6 +1,6 @@
 # MetaWorks 2.0 Deployment Guide
 
-This guide covers deploying MetaWorks 2.0 in various environments: local development, production servers, and HPC clusters.
+This guide covers deploying MetaWorks 2.0 in local development and single-server environments. It also includes experimental HPC notes, but those paths have not yet been systematically validated across clusters.
 
 ## Recommended 2026 Deployment
 
@@ -9,14 +9,14 @@ MetaWorks supports a split deployment:
 - `backend` container runs FastAPI and executes Snakemake pipelines via its own conda runtime
 - `frontend` container builds the Vue 3 SPA and serves it via Caddy, proxying `/api/*` to the backend
 - `deploy/docker-compose.yml` runs the split stack
-- default runtime is `conda` inside the backend container, so users only need Docker/Compose on the host
+- default runtime is `conda` inside the backend container, meaning Snakemake executes in the bundled MetaWorks Conda environment and users only need Docker/Compose on the host
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
 - [Server Deployment](#server-deployment)
-- [HPC Deployment](#hpc-deployment)
+- [Experimental HPC Notes](#experimental-hpc-notes)
 - [Building the UI](#building-the-ui)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
@@ -156,11 +156,13 @@ For more control over the deployment:
 5. **Serve the frontend:**
    Use a reverse proxy (Caddy, Nginx) to serve the built frontend and proxy `/api/*` to port 8000.
 
-## HPC Deployment
+## Experimental HPC Notes
+
+The v2.0.0 backend launches Snakemake runs as local processes through `subprocess.Popen`. Native scheduler submission for SLURM, PBS, or other queueing systems is not implemented in this release. The notes below are deployment patterns to evaluate with a site administrator, not a tested support guarantee.
 
 ### Control Node on HPC
 
-Many HPC clusters don't allow running web servers on login nodes. You have several options:
+Many HPC clusters do not allow running web servers on login nodes. Possible patterns include:
 
 #### Option 1: Dedicated Control Node
 
@@ -210,7 +212,7 @@ If the cluster has a web server:
 
 ### HPC-Specific Configuration
 
-For HPC deployment, use Apptainer (Singularity) runtime:
+For an HPC-style deployment, Apptainer/Singularity may be a better fit than Docker if it is installed and permitted by the site:
 
 ```bash
 # Build Singularity image
@@ -224,7 +226,7 @@ sudo singularity build metaworks.sif docker://metaworks:latest
 
 ### Scheduler Integration
 
-Scheduler integration (SLURM, PBS) is planned for a future release. The current architecture uses local `subprocess.Popen` for pipeline execution. When implemented, the API surface will remain the same — only the runner backend changes.
+Scheduler integration (SLURM, PBS) is planned for a future release. The current architecture uses local `subprocess.Popen` for pipeline execution. When implemented, the API surface should remain the same and only the runner backend should change.
 
 ## Building the UI
 
@@ -360,6 +362,7 @@ app.add_middleware(
 ## Additional Resources
 
 - [Configuration Guide](CONFIGURATION_GUIDE.md)
+- [Module Parameters](MODULE_PARAMETERS.md)
 - [Module Standards](MODULE_STANDARDS.md)
 - [Remote API Usage](REMOTE_API_UI.md)
 

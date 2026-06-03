@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use MetaWorks 2.0 in your research, please cite the MetaWorks paper and the archived software release."
+title: "MetaWorks 2.0"
+version: "2.0.0"
+date-released: "2026-06-02"
+type: software
+license: GPL-3.0-only
+repository-code: "https://github.com/Hajibabaei-Lab/MetaWorks-2.0"
+url: "https://github.com/Hajibabaei-Lab/MetaWorks-2.0"
+abstract: "MetaWorks 2.0 is a modular, API-backed, web-operable metabarcoding platform for ESV and OTU workflows. It migrates the v1 Snakemake pipeline to a rule-module architecture, adds validated configuration management, replaces Perl helper scripts with Python, introduces FastAPI and Vue interfaces, and adds Docker Compose deployment."
+authors:
+  - family-names: "Song"
+    given-names: "Yaye"
+    affiliation: "Hajibabaei Lab, University of Guelph"
+  - family-names: "Hajibabaei"
+    given-names: "Mehrdad"
+    affiliation: "Hajibabaei Lab, University of Guelph"
+  - family-names: "Porter"
+    given-names: "Teresita M."
+    affiliation: "University of Guelph"
+keywords:
+  - metabarcoding
+  - bioinformatics
+  - Snakemake
+  - ESV
+  - OTU
+  - biodiversity
+  - FastAPI
+  - Vue
+preferred-citation:
+  type: article
+  title: "MetaWorks: A flexible, scalable bioinformatic pipeline for high-throughput multi-marker biodiversity assessments"
+  authors:
+    - family-names: "Porter"
+      given-names: "Teresita M."
+    - family-names: "Hajibabaei"
+      given-names: "Mehrdad"
+  journal: "PLOS ONE"
+  year: 2022
+  volume: 17
+  issue: 9
+  doi: "10.1371/journal.pone.0274260"
+

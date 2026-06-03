@@ -1,0 +1,19 @@
+flowchart LR
+    Trimmed["Trimmed reads<br/>from input preparation"] --> EditHeaders["Reformat headers<br/>per sample"] --> Concat["Concatenate<br/>samples"] --> Compress["Compress"]
+
+    Compress --> Derep["Dereplicate<br/>VSEARCH fastx_uniques"] --> Denoise["UNOISE3 denoising<br/>VSEARCH cluster_unoise"] --> Chimera["Chimera removal<br/>VSEARCH uchime3_denovo"] --> ESVTable["ESV table<br/>VSEARCH search_exact"]
+
+    ESVTable --> Classify["Taxonomic classification<br/>RDP or SINTAX"] --> Results["results.csv"]
+
+    Trimmed -. "stats enabled" .-> Stats["Read / sequence<br/>length statistics"]
+
+    classDef input fill:#eff6ff,stroke:#2563eb,color:#172033;
+    classDef core fill:#ecfdf5,stroke:#0f766e,color:#172033;
+    classDef taxonomy fill:#faf5ff,stroke:#7e22ce,color:#172033;
+    classDef output fill:#f0fdf4,stroke:#15803d,color:#172033;
+    classDef side fill:#f8fafc,stroke:#64748b,color:#172033;
+    class Trimmed input;
+    class EditHeaders,Concat,Compress,Derep,Denoise,Chimera,ESVTable core;
+    class Classify taxonomy;
+    class Results output;
+    class Stats side;

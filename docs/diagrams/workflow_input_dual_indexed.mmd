@@ -1,0 +1,12 @@
+flowchart LR
+    DI["R1 / R2 FASTQ"] --> PairDI["Pair reads<br/>SeqPrep"] --> DeriveDI["Derive per-sample<br/>adapters from CSV"] --> TrimDI["Trim primers<br/>Cutadapt"]
+    AdapterCSV["Adapter CSV<br/>SampleID, Amplicon,<br/>Forward, Reverse"] --> DeriveDI
+
+    TrimDI --> Ready["Trimmed reads<br/>ready for denoising"]
+
+    classDef input fill:#eff6ff,stroke:#2563eb,color:#172033;
+    classDef adapter fill:#fef9c3,stroke:#ca8a04,color:#172033;
+    classDef core fill:#ecfdf5,stroke:#0f766e,color:#172033;
+    class DI input;
+    class AdapterCSV adapter;
+    class PairDI,DeriveDI,TrimDI,Ready core;
