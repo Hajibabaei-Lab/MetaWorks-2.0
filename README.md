@@ -167,7 +167,7 @@ MetaWorks 2.0 is released under the GNU General Public License v3.0. See [LICENS
 
 If you use MetaWorks 2.0 in research, cite the archived software release:
 
-Song, Y., & Hajibabaei, M. (2026). MetaWorks 2.0 (Version v2.0.0). Zenodo. https://doi.org/10.5281/zenodo.22210764
+Song, Y., & Hajibabaei, M. (2026). MetaWorks 2.0 (Version v2.0.0). Zenodo. https://doi.org/10.5281/zenodo.22210765
 
 Citation metadata is also available in [CITATION.cff](CITATION.cff). Please also cite the MetaWorks paper:
 

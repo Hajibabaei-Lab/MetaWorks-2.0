@@ -3,7 +3,7 @@ message: "If you use MetaWorks 2.0 in your research, please cite the MetaWorks p
 title: "MetaWorks 2.0"
 version: "2.0.0"
 date-released: "2026-08-31"
-doi: 10.5281/zenodo.22210764
+doi: 10.5281/zenodo.22210765
 type: software
 license: GPL-3.0-only
 repository-code: "https://github.com/Hajibabaei-Lab/MetaWorks-2.0"
