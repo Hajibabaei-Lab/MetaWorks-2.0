@@ -2,13 +2,13 @@
 # docker run -it --rm metaworks bash
 # snakemake --jobs 4 --cores 4
 
-FROM condaforge/mambaforge:latest
+FROM condaforge/miniforge3:25.3.1-0
 
 COPY environment.yml /tmp/environment.yml
 RUN mamba env create -f /tmp/environment.yml \
     && mamba clean --all --yes
 
-RUN wget ftp://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/ORFfinder/linux-i64/ORFfinder.gz \
+RUN wget https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/ORFfinder/linux-i64/ORFfinder.gz \
     && gunzip ORFfinder.gz \
     && chmod +x ORFfinder \
     && mv ORFfinder /opt/conda/envs/MetaWorks/bin/
