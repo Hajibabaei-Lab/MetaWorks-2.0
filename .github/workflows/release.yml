@@ -23,9 +23,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --notes-file CHANGELOG.md
+          gh release view "$GITHUB_REF_NAME" \
+            || gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file CHANGELOG.md
+          gh release edit "$GITHUB_REF_NAME" --draft=false --notes-file CHANGELOG.md
 
   build-and-push:
     needs: publish-github-release
@@ -114,7 +116,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.version }}
@@ -126,7 +128,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           build-args: VITE_API_BASE=/api
           tags: |
