@@ -5,35 +5,20 @@ DENOISING_CONFIG = get_module_config(config, "denoising")
 
 rule edit_fasta_header1:
     input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
-    output: temp(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp")
-    shell: "set -euo pipefail; python3 workflow/scripts/rename_fasta_gzip.py {input} > {output}"
+    output: temp(config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz")
+    shell:
+        "set -euo pipefail; python3 workflow/scripts/prepare_pooled_reads.py {input} --sample-name {wildcards.sample} > {output}"
 
 # Global pooling path
 if DENOISING_CONFIG.get("pool_samples", True):
 
     rule concatenate_for_global_analysis:
         input:
-            expand(config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp", sample=SAMPLES_UNIQUE)
-        output:
-            temp(config["pipeline"]["output_dir"] + "/cat.fasta.tmp")
-        shell:
-            "set -euo pipefail; cat {input} > {output}"
-
-    rule edit_fasta_header2:
-        input:
-            config["pipeline"]["output_dir"] + "/cat.fasta.tmp"
-        output:
-            temp(config["pipeline"]["output_dir"] + "/cat.fasta")
-        shell:
-            "set -euo pipefail; sed -e '/^>/s/-/_/g' {input} > {output}"
-
-    rule compress:
-        input:
-            config["pipeline"]["output_dir"] + "/cat.fasta"
+            expand(config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz", sample=SAMPLES_UNIQUE)
         output:
             config["pipeline"]["output_dir"] + "/cat.fasta.gz"
         shell:
-            "set -euo pipefail; gzip -c {input} > {output}"
+            "set -euo pipefail; cat {input} > {output}"
 
     rule dereplicate:
         input:
@@ -83,17 +68,9 @@ if DENOISING_CONFIG.get("pool_samples", True):
 # Per-sample processing path
 else:
 
-    rule edit_fasta_header2:
-        input:
-            config["pipeline"]["output_dir"] + "/{sample}.fasta.tmp"
-        output:
-            temp(config["pipeline"]["output_dir"] + "/{sample}.tagged")
-        shell:
-            "set -euo pipefail; sed -e '/^>/s/-/_/g' {input} > {output}"
-
     rule dereplicate_single:
         input:
-            config["pipeline"]["output_dir"] + "/{sample}.tagged"
+            config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz"
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp")
         shell:
@@ -149,7 +126,7 @@ else:
 
     rule create_ESV_table:
         input:
-            vsearch_global = config["pipeline"]["output_dir"] + "/{sample}.tagged",
+            vsearch_global = config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz",
             db = config["pipeline"]["output_dir"] + "/cat.denoised.nonchimeras"
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp")

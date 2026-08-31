@@ -93,7 +93,7 @@ Key scripts by function:
 | `map_global_esvs_to_results.py` | Map global ESVs to per-trial results |
 | `map_global_otus_to_results.py` | Map global OTUs to per-trial results |
 | `map_global_to_results.py` | Map global identifiers to results |
-| `rename_fasta_gzip.py` | Rename and gzip FASTA files |
+| `prepare_pooled_reads.py` | Prepare reads for pooled denoising (sample-prefix rename + header sanitize + gzip) |
 | `fastq_gz_stats.py` | Compute statistics for FASTQ files |
 | `fasta_gz_stats.py` | Compute statistics for FASTA files |
 | `rc.py` | Reverse-complement sequences |

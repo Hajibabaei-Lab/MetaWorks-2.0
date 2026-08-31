@@ -17,7 +17,6 @@ set-threads:
   trim_linked_adapters: 1
   gzip_trimmed_fasta: 1
   concatenate_for_global_analysis: 1
-  edit_fasta_header2: 1
   compress: 1
   dereplicate: 1
   denoise: 1

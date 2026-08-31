@@ -12,7 +12,7 @@ if READ_MODE == "paired":
         output:
             X1 = temp(config["pipeline"]["output_dir"] + "/{sample}_R1.out"),
             X2 = temp(config["pipeline"]["output_dir"] + "/{sample}_R2.out"),
-            s = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
+            s = temp(config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz")
         params:
             q = lambda wc: PREPROCESSING_CONFIG.get("quality_score", 13),
             o = lambda wc: PREPROCESSING_CONFIG.get("min_overlap", 25),
@@ -46,7 +46,7 @@ if READ_MODE == "paired":
                 adapters = TRIMMING_CONFIG.get("adapters"),
                 paired = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
             output:
-                config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
+                temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta")
             params:
                 m = lambda wc: TRIMMING_CONFIG.get("min_length", 150),
                 q = lambda wc: TRIMMING_CONFIG.get("quality_cutoff", "20,20"),
@@ -116,7 +116,7 @@ if READ_MODE == "paired":
                 adapters = config["pipeline"]["output_dir"] + "/{sample}_adapters.fasta",
                 paired = config["pipeline"]["output_dir"] + "/paired/{sample}.fastq.gz"
             output:
-                config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
+                temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta")
             params:
                 m = lambda wc: TRIMMING_CONFIG.get("min_length", 150),
                 q = lambda wc: TRIMMING_CONFIG.get("quality_cutoff", "20,20"),
@@ -159,7 +159,7 @@ elif READ_MODE == "single":
             input:
                 lambda wildcards: get_fastq_path(wildcards.sample, 2)
             output:
-                config["pipeline"]["output_dir"] + "/rc/{sample}.fastq.gz"
+                temp(config["pipeline"]["output_dir"] + "/rc/{sample}.fastq.gz")
             threads: 1
             log:
                 config["pipeline"]["output_dir"] + "/logs/rc/{sample}.log"
@@ -173,7 +173,7 @@ elif READ_MODE == "single":
             input:
                 config["pipeline"]["output_dir"] + "/rc/{sample}.fastq.gz"
             output:
-                config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
+                temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta")
             params:
                 m = lambda wc: TRIMMING_CONFIG.get("min_length", 150),
                 q = lambda wc: TRIMMING_CONFIG.get("quality_cutoff", "20,20"),
@@ -208,7 +208,7 @@ elif READ_MODE == "single":
             input:
                 lambda wildcards: get_fastq_path(wildcards.sample, 1)
             output:
-                config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
+                temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta")
             params:
                 m = lambda wc: TRIMMING_CONFIG.get("min_length", 150),
                 q = lambda wc: TRIMMING_CONFIG.get("quality_cutoff", "20,20"),
@@ -241,7 +241,7 @@ rule gzip_trimmed_fasta:
     input:
         config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
     output:
-        config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
+        temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz")
     threads: 1
     log:
         config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.gzip.log"

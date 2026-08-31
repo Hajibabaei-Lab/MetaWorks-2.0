@@ -4,27 +4,6 @@ import sys
 import pytest
 
 
-class TestRenameFastaGzip:
-    def test_has_main_function(self):
-        from workflow.scripts.rename_fasta_gzip import main
-        assert callable(main)
-
-    def test_renames_fasta_headers(self, sample_fasta, capsys):
-        from workflow.scripts.rename_fasta_gzip import main
-        main([str(sample_fasta)])
-        captured = capsys.readouterr()
-        assert ">test_seq1\n" in captured.out
-        assert ">test_seq2\n" in captured.out
-
-    def test_missing_args_exits(self):
-        result = subprocess.run(
-            [sys.executable, "workflow/scripts/rename_fasta_gzip.py"],
-            capture_output=True, text=True,
-        )
-        assert result.returncode != 0
-        assert "usage" in result.stderr.lower() or "error" in result.stderr.lower()
-
-
 class TestFastqGzStats:
     def test_has_main_function(self):
         from workflow.scripts.fastq_gz_stats import main
@@ -485,3 +464,145 @@ class TestMapGlobalOtusToResults:
             capture_output=True, text=True,
         )
         assert result.returncode != 0
+
+
+class TestPreparePooledReads:
+    def test_prepends_sample_prefix_and_gzips(self, tmp_path):
+        import gzip
+
+        in_path = tmp_path / "SampleA.fasta.gz"
+        with gzip.open(in_path, "wt") as f:
+            f.write(">seq1\nACGTACGT\n>seq2\nTGCATGCA\n")
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "workflow/scripts/prepare_pooled_reads.py",
+                str(in_path),
+                "--sample-name",
+                "SampleA",
+            ],
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        text = gzip.decompress(result.stdout).decode()
+        assert ">SampleA_seq1\n" in text
+        assert ">SampleA_seq2\n" in text
+        assert "ACGTACGT\n" in text
+
+    def test_sanitizes_dashes_in_headers_only(self, tmp_path):
+        import gzip
+
+        in_path = tmp_path / "S1.fasta.gz"
+        with gzip.open(in_path, "wt") as f:
+            f.write(">seq-1 desc-with-dash\nACGT-ACGT\n")
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "workflow/scripts/prepare_pooled_reads.py",
+                str(in_path),
+                "--sample-name",
+                "S1",
+            ],
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        text = gzip.decompress(result.stdout).decode()
+        assert ">S1_seq_1 desc_with_dash\n" in text
+        assert "ACGT-ACGT\n" in text
+
+    def test_accepts_plain_uncompressed_input(self, tmp_path):
+        import gzip
+
+        in_path = tmp_path / "S1.fasta"
+        in_path.write_text(">seq1\nACGTACGT\n")
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "workflow/scripts/prepare_pooled_reads.py",
+                str(in_path),
+                "--sample-name",
+                "S1",
+            ],
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        text = gzip.decompress(result.stdout).decode()
+        assert ">S1_seq1\nACGTACGT\n" == text
+
+    def test_dash_in_sample_name_is_sanitized(self, tmp_path):
+        import gzip
+
+        in_path = tmp_path / "S-X.fasta.gz"
+        with gzip.open(in_path, "wt") as f:
+            f.write(">seq-1\nACGT\n")
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "workflow/scripts/prepare_pooled_reads.py",
+                str(in_path),
+                "--sample-name",
+                "S-X",
+            ],
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        text = gzip.decompress(result.stdout).decode()
+        assert ">S_X_seq_1\n" in text
+
+    def test_empty_input_yields_valid_empty_gzip(self, tmp_path):
+        import gzip
+
+        in_path = tmp_path / "empty.fasta.gz"
+        with gzip.open(in_path, "wt") as f:
+            f.write("")
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "workflow/scripts/prepare_pooled_reads.py",
+                str(in_path),
+                "--sample-name",
+                "S1",
+            ],
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert gzip.decompress(result.stdout) == b""
+
+    def test_missing_args_exits(self):
+        result = subprocess.run(
+            [sys.executable, "workflow/scripts/prepare_pooled_reads.py"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode != 0
+        assert "usage" in result.stderr.lower() or "error" in result.stderr.lower()
+
+    def test_concatenated_per_sample_gzips_merge_cleanly(self, tmp_path):
+        import gzip
+
+        def prepare(sample, seq):
+            in_path = tmp_path / f"{sample}.fasta.gz"
+            with gzip.open(in_path, "wt") as f:
+                f.write(f">seq1\n{seq}\n")
+            res = subprocess.run(
+                [
+                    sys.executable,
+                    "workflow/scripts/prepare_pooled_reads.py",
+                    str(in_path),
+                    "--sample-name",
+                    sample,
+                ],
+                capture_output=True,
+            )
+            assert res.returncode == 0, res.stderr
+            return res.stdout
+
+        # Simulates `cat S1.fasta.gz S2.fasta.gz > cat.fasta.gz` (multi-member gzip)
+        cat_gz = prepare("S1", "ACGT") + prepare("S2", "TTTT")
+        text = gzip.decompress(cat_gz).decode()
+        assert text == ">S1_seq1\nACGT\n>S2_seq1\nTTTT\n"
