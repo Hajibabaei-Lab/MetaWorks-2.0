@@ -241,7 +241,7 @@ rule gzip_trimmed_fasta:
     input:
         config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta"
     output:
-        temp(config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz")
+        config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
     threads: 1
     log:
         config["pipeline"]["output_dir"] + "/logs/trimming/{sample}.gzip.log"

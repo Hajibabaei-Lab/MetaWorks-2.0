@@ -33,7 +33,7 @@ modular, API-backed, web-operable platform for ESV and OTU metabarcoding workflo
   GitHub Container Registry.
 - Added SINTAX classifier support alongside RDP.
 - Added a parallel RDP classifier wrapper (`workflow/scripts/parallel_rdp.py`) that splits input FASTA files into chunks and runs concurrent `rdp_classifier` processes using a thread pool, reducing classification wall-clock time on multi-core systems.
-- Added 162 automated tests covering API surface, configuration behavior, schema
+- Added 166 automated tests covering API surface, configuration behavior, schema
   generation, and pipeline scripts.
 
 ### Changed
@@ -51,6 +51,11 @@ modular, API-backed, web-operable platform for ESV and OTU metabarcoding workflo
   Apptainer/Singularity-oriented operation.
 - Moved web-submitted run outputs, staged assets, logs, and state into runtime
   directories managed by the backend.
+- Marked trimming and denoising intermediates as temporary so Snakemake removes
+  them once consumed, reducing peak disk usage during runs; per-sample trimmed
+  FASTA files (`trimmed/{sample}.fasta.gz`) remain durable artifacts. Because
+  intermediates are deleted, reruns after late-stage failures re-execute
+  trimming from raw reads.
 
 ### Fixed
 
