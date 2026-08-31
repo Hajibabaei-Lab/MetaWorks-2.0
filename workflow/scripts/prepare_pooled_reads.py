@@ -6,8 +6,8 @@ import sys
 
 def _open_input(path):
     if path.endswith(".gz"):
-        return gzip.open(path, "rt")
-    return open(path, "r")
+        return gzip.open(path, "rt", encoding="utf-8")
+    return open(path, "r", encoding="utf-8")
 
 
 def main(argv=None):
@@ -26,9 +26,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     out = sys.stdout.buffer
-    with _open_input(args.input) as inf, gzip.GzipFile(fileobj=out, mode="wb", mtime=0) as gz:
+    try:
+        inf = _open_input(args.input)
+    except OSError as e:
+        sys.exit(f"Cannot open infile: {e}")
+    with inf, gzip.GzipFile(fileobj=out, mode="wb", mtime=0) as gz:
         for line in inf:
-            line = line.rstrip("\n")
+            line = line.rstrip("\r\n")
             if line.startswith(">"):
                 line = f">{args.sample_name}_{line[1:]}".replace("-", "_")
             gz.write((line + "\n").encode())

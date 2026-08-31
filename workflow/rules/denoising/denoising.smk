@@ -6,8 +6,10 @@ DENOISING_CONFIG = get_module_config(config, "denoising")
 rule edit_fasta_header1:
     input: config["pipeline"]["output_dir"] + "/trimmed/{sample}.fasta.gz"
     output: temp(config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz")
+    log:
+        config["pipeline"]["output_dir"] + "/logs/denoising/{sample}.prepare_reads.log"
     shell:
-        "set -euo pipefail; python3 workflow/scripts/prepare_pooled_reads.py {input} --sample-name {wildcards.sample} > {output}"
+        "set -euo pipefail; python3 workflow/scripts/prepare_pooled_reads.py \"{input}\" --sample-name \"{wildcards.sample}\" > \"{output}\" 2> \"{log}\""
 
 # Global pooling path
 if DENOISING_CONFIG.get("pool_samples", True):
@@ -17,8 +19,10 @@ if DENOISING_CONFIG.get("pool_samples", True):
             expand(config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz", sample=SAMPLES_UNIQUE)
         output:
             config["pipeline"]["output_dir"] + "/cat.fasta.gz"
+        log:
+            config["pipeline"]["output_dir"] + "/logs/denoising/concatenate.log"
         shell:
-            "set -euo pipefail; cat {input} > {output}"
+            "set -euo pipefail; cat {input} > \"{output}\""
 
     rule dereplicate:
         input:
@@ -73,8 +77,10 @@ else:
             config["pipeline"]["output_dir"] + "/{sample}.prepared.fasta.gz"
         output:
             temp(config["pipeline"]["output_dir"] + "/{sample}.uniques.tmp")
+        log:
+            config["pipeline"]["output_dir"] + "/logs/denoising/{sample}.dereplication.log"
         shell:
-            "set -euo pipefail; vsearch --fastx_uniques {input} --fastaout {output} --sizein --sizeout"
+            "set -euo pipefail; vsearch --fastx_uniques \"{input}\" --fastaout \"{output}\" --sizein --sizeout --log \"{log}\""
 
     rule denoise:
         input:
@@ -93,8 +99,10 @@ else:
             expand(config["pipeline"]["output_dir"] + "/{sample}.denoised", sample=SAMPLES_UNIQUE)
         output:
             config["pipeline"]["output_dir"] + "/cat.denoised.tmp"
+        log:
+            config["pipeline"]["output_dir"] + "/logs/denoising/concatenate.log"
         shell:
-            "set -euo pipefail; cat {input} > {output}"
+            "set -euo pipefail; cat {input} > \"{output}\""
 
     rule dereplicate:
         input:
@@ -111,8 +119,10 @@ else:
             config["pipeline"]["output_dir"] + "/cat.uniques"
         output:
             config["pipeline"]["output_dir"] + "/cat.uniques.gz"
+        log:
+            config["pipeline"]["output_dir"] + "/logs/denoising/compress.log"
         shell:
-            "set -euo pipefail; gzip -c {input} > {output}"
+            "set -euo pipefail; gzip -c \"{input}\" > \"{output}\" 2> \"{log}\""
 
     rule chimera_removal:
         input:
@@ -141,5 +151,7 @@ else:
             esv_tables = expand(config["pipeline"]["output_dir"] + "/{sample}.esv.tmp", sample=SAMPLES_UNIQUE)
         output:
             config["pipeline"]["output_dir"] + "/ESV.table.tmp"
+        log:
+            config["pipeline"]["output_dir"] + "/logs/denoising/merge_esv_tables.log"
         shell:
-            "set -euo pipefail; python3 workflow/scripts/merge_esv_tables.py {input.esv_tables} > {output}"
+            "set -euo pipefail; python3 workflow/scripts/merge_esv_tables.py {input.esv_tables} > \"{output}\" 2> \"{log}\""

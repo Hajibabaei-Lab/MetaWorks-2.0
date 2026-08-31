@@ -4,13 +4,6 @@ import pytest
 
 
 @pytest.fixture
-def sample_fasta(tmp_path):
-    p = tmp_path / "test.fasta"
-    p.write_text(">seq1\nACGTACGT\n>seq2\nTGCATGCA\n")
-    return p
-
-
-@pytest.fixture
 def sample_fasta_gz(tmp_path):
     p = tmp_path / "test.fasta.gz"
     with gzip.open(p, "wt") as f:

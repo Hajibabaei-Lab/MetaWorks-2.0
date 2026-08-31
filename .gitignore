@@ -45,8 +45,12 @@ Thumbs.db
 build/
 dist/
 runtime/
+output*/
 *.egg-info/
 .eggs/
+
+# Deployment configuration
+deploy/.env
 
 # Frontend
 frontend/node_modules/
