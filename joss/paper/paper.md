@@ -52,7 +52,7 @@ Version 2.0 replaces this workflow-specific organization with a common workflow 
 
 The architectural transition from workflow-specific Snakefiles in MetaWorks v1.13 to reusable, configuration-selected modules in version 2.0 is summarized in Figure 1.
 
-![Architectural comparison of MetaWorks v1.13 and MetaWorks 2.0. MetaWorks v1.13 used six workflow-specific Snakefiles. Paired, single-read, and dual-indexed ESV workflows independently implemented read processing and repeated denoising stages, whereas OTU and global workflows consumed denoised ESV output. MetaWorks 2.0 uses a common workflow entry point, centralized module and dependency resolution, and reusable rule modules selected according to workflow and marker configuration.[]{label="fig:architecture"}](architecture_v1_v2.png){width="100%"}
+![Architectural comparison of MetaWorks v1.13 and MetaWorks 2.0. MetaWorks v1.13 used six workflow-specific Snakefiles. Paired, single-read, and dual-indexed ESV workflows independently implemented read processing and repeated denoising stages, whereas OTU and global workflows consumed denoised ESV output. MetaWorks 2.0 uses a common workflow entry point, centralized module and dependency resolution, and reusable rule modules selected according to workflow and marker configuration.[]{label="fig:architecture"}](architecture_v1_v2.png)
 
 Detailed diagrams of individual ESV, OTU, ITS, input, global, and classification workflows are available in the repository's [workflow diagram documentation](https://github.com/Hajibabaei-Lab/MetaWorks-2.0/tree/main/docs/diagrams).
 
