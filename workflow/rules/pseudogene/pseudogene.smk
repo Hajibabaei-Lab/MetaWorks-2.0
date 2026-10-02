@@ -1,6 +1,8 @@
 # rules/pseudogene.smk
 # Uses shared helpers from rules/common.smk and lib.config.module_registry.
 
+import shlex
+
 PSEUDOGENE_CONFIG = get_module_config(config, "pseudogene_filtering")
 CLASSIFICATION_CONFIG = get_module_config(config, "classification")
 PSEUDOGENE_SUBMODULE_CONFIG = {
@@ -32,20 +34,20 @@ if pseudogene_enabled:
             input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
             output: config["pipeline"]["output_dir"] + "/taxon.zotus"
             params:
-                taxon1 = PSEUDOGENE_CONFIG.get("taxon1", "")
+                taxon1 = (" ".join(shlex.split(PSEUDOGENE_CONFIG.get("taxon1", ""))) or "''")
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "set -euo pipefail; set +o pipefail; grep \"{params.taxon1}\" {input} | awk '{{print $1}}' > \"{output}\" || true"
+                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | awk '{{print $1}}' > \"{output}\" || true"
     else:
         rule subset_taxonomy_by_taxon1_and_taxon2:
             input: config["pipeline"]["output_dir"] + "/rdp.out.tmp"
             output: config["pipeline"]["output_dir"] + "/taxon.zotus"
             params:
-                taxon1 = PSEUDOGENE_CONFIG.get("taxon1", ""),
-                taxon2 = PSEUDOGENE_CONFIG.get("taxon2", "")
+                taxon1 = (" ".join(shlex.split(PSEUDOGENE_CONFIG.get("taxon1", ""))) or "''"),
+                taxon2 = (" ".join(shlex.split(PSEUDOGENE_CONFIG.get("taxon2", ""))) or "''")
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/taxon_subset.log"
             shell:
-                "set -euo pipefail; set +o pipefail; grep \"{params.taxon1}\" {input} | grep \"{params.taxon2}\" | awk '{{print $1}}' > \"{output}\" || true"
+                "set -euo pipefail; set +o pipefail; grep {params.taxon1} {input} | grep {params.taxon2} | awk '{{print $1}}' > \"{output}\" || true"
 
     rule subset_ESV_sequences_by_taxon:
         input:
@@ -109,7 +111,7 @@ if pseudogene_enabled:
             output: config["pipeline"]["output_dir"] + "/hmm.txt"
             log: config["pipeline"]["output_dir"] + "/logs/pseudogene/hmmscan.log"
             shell:
-                "set -euo pipefail; hmmscan --tblout {output} {input.hmm} {input.orf} 2> {log}"
+                "set -euo pipefail; if [ -s \"{input.orf}\" ]; then hmmscan --tblout \"{output}\" \"{input.hmm}\" \"{input.orf}\" 2> \"{log}\"; else : > \"{output}\"; echo \"WARNING: {input.orf} is empty (no ORFs survived subsetting); skipping hmmscan\" | tee -a \"{log}\"; fi"
 
         rule add_good_orf_sequences_to_taxonomy:
             input:

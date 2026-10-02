@@ -32,6 +32,9 @@ def main(argv=None):
             hmm_dict[id_val] = score_val
             scores.append(score_val)
 
+    if not scores:
+        return
+
     p25 = np.percentile(scores, 25)
     p75 = np.percentile(scores, 75)
     iqr = p75 - p25
