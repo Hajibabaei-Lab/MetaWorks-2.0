@@ -3,6 +3,16 @@
 This changelog starts with the v2.0.0 release. Earlier MetaWorks v1 releases were
 tracked through Git history, GitHub releases, and the original v1 Zenodo archive.
 
+## v2.0.1
+
+Patch release fixing pseudogene taxon filtering.
+
+### Fixed
+
+- Removed shell quotes around `{params.taxon1}` / `{params.taxon2}` in the
+  `subset_taxonomy_by_taxon1` and `subset_taxonomy_by_taxon1_and_taxon2`
+  pseudogene rules so grep patterns match the RDP taxonomy output correctly.
+
 ## v2.0.0
 
 MetaWorks v2.0.0 is a major migration from the v1.13.0 command-line pipeline to a
